@@ -306,66 +306,6 @@ export default function HabitTracker() {
 
     return (
         <>
-            {/* Stats Cards */}
-            {overallStats && habits.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
-                    <div className="bg-white/90 backdrop-blur-xl border border-china/10 rounded-2xl p-4 sm:p-5 shadow-lg">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-royal to-china flex items-center justify-center flex-shrink-0">
-                                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <p className="text-xs sm:text-sm text-china font-medium">Completion</p>
-                                <p className="text-xl sm:text-2xl font-bold text-midnight">{overallStats.overallRate}%</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white/90 backdrop-blur-xl border border-china/10 rounded-2xl p-4 sm:p-5 shadow-lg">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center flex-shrink-0">
-                                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                            </div>
-                            <div>
-                                <p className="text-xs sm:text-sm text-china font-medium">Completed</p>
-                                <p className="text-xl sm:text-2xl font-bold text-midnight">{overallStats.totalCompleted}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white/90 backdrop-blur-xl border border-china/10 rounded-2xl p-4 sm:p-5 shadow-lg">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center flex-shrink-0">
-                                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <p className="text-xs sm:text-sm text-china font-medium">Possible</p>
-                                <p className="text-xl sm:text-2xl font-bold text-midnight">{overallStats.totalPossible}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white/90 backdrop-blur-xl border border-china/10 rounded-2xl p-4 sm:p-5 shadow-lg">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
-                                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                                </svg>
-                            </div>
-                            <div>
-                                <p className="text-xs sm:text-sm text-china font-medium">Habits</p>
-                                <p className="text-xl sm:text-2xl font-bold text-midnight">{overallStats.habitsTracked}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             <div className="bg-white/90 backdrop-blur-2xl border border-china/10 rounded-3xl shadow-xl overflow-hidden">
                 {/* Header with Controls */}
@@ -562,8 +502,8 @@ export default function HabitTracker() {
                                 <button
                                     key={habit.id}
                                     className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${selectedHabit?.id === habit.id
-                                            ? 'bg-gradient-to-r from-royal to-china text-white shadow-md'
-                                            : 'bg-porcelain/50 text-midnight hover:bg-porcelain'
+                                        ? 'bg-gradient-to-r from-royal to-china text-white shadow-md'
+                                        : 'bg-porcelain/50 text-midnight hover:bg-porcelain'
                                         }`}
                                     onClick={() => setSelectedHabit(habit)}
                                 >
@@ -739,6 +679,27 @@ export default function HabitTracker() {
                             >
                                 Delete
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Bottom Stats Section */}
+            {overallStats && habits.length > 0 && (
+                <div className="mt-6 bg-white/70 backdrop-blur-sm border border-china/10 rounded-2xl p-4 sm:p-5 shadow-sm">
+                    <h3 className="text-sm font-semibold text-midnight mb-4">Monthly Statistics</h3>
+                    <div className="grid grid-cols-3 gap-4">
+                        <div className="text-center p-3 bg-gradient-to-br from-royal/5 to-china/5 rounded-xl">
+                            <p className="text-2xl sm:text-3xl font-bold text-royal">{overallStats.overallRate}%</p>
+                            <p className="text-xs text-china mt-1">Completion Rate</p>
+                        </div>
+                        <div className="text-center p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl">
+                            <p className="text-2xl sm:text-3xl font-bold text-green-600">{overallStats.totalCompleted}</p>
+                            <p className="text-xs text-green-700 mt-1">Tasks Completed</p>
+                        </div>
+                        <div className="text-center p-3 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl">
+                            <p className="text-2xl sm:text-3xl font-bold text-purple-600">{overallStats.habitsTracked}</p>
+                            <p className="text-xs text-purple-700 mt-1">Habits Tracked</p>
                         </div>
                     </div>
                 </div>
