@@ -12,14 +12,14 @@ export default function Home() {
 
       <div className="relative max-w-5xl mx-auto px-4 py-6 sm:px-6 sm:py-8 md:px-8 md:py-12 lg:py-16">
         {/* Top Section: Quote on left, Header on right */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 sm:mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-8 gap-6 mb-6 sm:mb-8">
           {/* Daily Quote */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-3">
             <DailyQuote />
           </div>
 
           {/* Header */}
-          <div className="lg:col-span-2 flex flex-col justify-center text-center lg:text-left">
+          <div className="lg:col-span-5 flex flex-col justify-center text-center lg:text-left">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/60 backdrop-blur-sm rounded-full mb-4 border border-china/10 w-fit mx-auto lg:mx-0">
               <span className="w-2 h-2 rounded-full bg-gradient-to-r from-royal to-china animate-pulse" />
               <span className="text-xs font-medium text-china">Track your daily progress</span>
