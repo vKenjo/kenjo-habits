@@ -1,7 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase, isSupabaseConfigured, Habit, HabitCompletion } from '@/lib/supabase';
+
+interface HabitStats {
+    completionRate: number;
+    currentStreak: number;
+    bestStreak: number;
+    totalCompleted: number;
+    totalDays: number;
+}
 
 export default function HabitTracker() {
     const [habits, setHabits] = useState<Habit[]>([]);
@@ -11,6 +19,8 @@ export default function HabitTracker() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [deleteModal, setDeleteModal] = useState<{ open: boolean; habit: Habit | null }>({ open: false, habit: null });
     const [newHabitName, setNewHabitName] = useState('');
+    const [viewMode, setViewMode] = useState<'grid' | 'calendar'>('grid');
+    const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
 
     // Initialize date on client side to avoid hydration mismatch
     useEffect(() => {
@@ -27,6 +37,11 @@ export default function HabitTracker() {
         const d = new Date(date.getFullYear(), date.getMonth(), day);
         const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
         return days[d.getDay()];
+    };
+
+    // Get first day of month (0 = Sunday, 1 = Monday, etc.)
+    const getFirstDayOfMonth = (date: Date) => {
+        return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
     };
 
     // Format date for database
@@ -90,6 +105,73 @@ export default function HabitTracker() {
         };
         loadData();
     }, [fetchHabits, fetchCompletions, currentDate]);
+
+    // Calculate stats for a habit
+    const calculateStats = useCallback((habitId: string): HabitStats => {
+        if (!currentDate) return { completionRate: 0, currentStreak: 0, bestStreak: 0, totalCompleted: 0, totalDays: 0 };
+
+        const today = new Date();
+        const daysInMonth = getDaysInMonth(currentDate);
+        const isCurrentMonth = today.getMonth() === currentDate.getMonth() && today.getFullYear() === currentDate.getFullYear();
+        const totalDays = isCurrentMonth ? today.getDate() : daysInMonth;
+
+        const habitCompletions = completions.filter(c => c.habit_id === habitId);
+        const totalCompleted = habitCompletions.length;
+        const completionRate = totalDays > 0 ? Math.round((totalCompleted / totalDays) * 100) : 0;
+
+        // Calculate streaks
+        let currentStreak = 0;
+        let bestStreak = 0;
+        let tempStreak = 0;
+
+        const completedDates = new Set(habitCompletions.map(c => c.completed_date));
+
+        // Check from today backwards for current streak
+        for (let i = totalDays; i >= 1; i--) {
+            const dateStr = formatDate(currentDate, i);
+            if (completedDates.has(dateStr)) {
+                if (i === totalDays || currentStreak > 0) {
+                    currentStreak++;
+                }
+            } else if (currentStreak > 0) {
+                break;
+            }
+        }
+
+        // Calculate best streak
+        for (let i = 1; i <= daysInMonth; i++) {
+            const dateStr = formatDate(currentDate, i);
+            if (completedDates.has(dateStr)) {
+                tempStreak++;
+                if (tempStreak > bestStreak) bestStreak = tempStreak;
+            } else {
+                tempStreak = 0;
+            }
+        }
+
+        return { completionRate, currentStreak, bestStreak, totalCompleted, totalDays };
+    }, [completions, currentDate]);
+
+    // Overall stats
+    const overallStats = useMemo(() => {
+        if (!currentDate || habits.length === 0) return null;
+
+        const today = new Date();
+        const daysInMonth = getDaysInMonth(currentDate);
+        const isCurrentMonth = today.getMonth() === currentDate.getMonth() && today.getFullYear() === currentDate.getFullYear();
+        const totalDays = isCurrentMonth ? today.getDate() : daysInMonth;
+
+        const totalPossible = habits.length * totalDays;
+        const totalCompleted = completions.length;
+        const overallRate = totalPossible > 0 ? Math.round((totalCompleted / totalPossible) * 100) : 0;
+
+        return {
+            overallRate,
+            totalCompleted,
+            totalPossible,
+            habitsTracked: habits.length
+        };
+    }, [habits, completions, currentDate]);
 
     // Check if habit is completed on a specific day
     const isCompleted = (habitId: string, day: number) => {
@@ -168,6 +250,9 @@ export default function HabitTracker() {
         setHabits(habits.filter((h) => h.id !== deleteModal.habit!.id));
         setCompletions(completions.filter((c) => c.habit_id !== deleteModal.habit!.id));
         setDeleteModal({ open: false, habit: null });
+        if (selectedHabit?.id === deleteModal.habit.id) {
+            setSelectedHabit(null);
+        }
     };
 
     // Navigate months
@@ -183,6 +268,7 @@ export default function HabitTracker() {
 
     const monthName = currentDate?.toLocaleString('default', { month: 'long', year: 'numeric' }) || '';
     const daysInMonth = currentDate ? getDaysInMonth(currentDate) : 31;
+    const firstDayOfMonth = currentDate ? getFirstDayOfMonth(currentDate) : 0;
 
     // Handle keyboard shortcuts
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -220,6 +306,67 @@ export default function HabitTracker() {
 
     return (
         <>
+            {/* Stats Cards */}
+            {overallStats && habits.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
+                    <div className="bg-white/90 backdrop-blur-xl border border-china/10 rounded-2xl p-4 sm:p-5 shadow-lg">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-royal to-china flex items-center justify-center flex-shrink-0">
+                                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p className="text-xs sm:text-sm text-china font-medium">Completion</p>
+                                <p className="text-xl sm:text-2xl font-bold text-midnight">{overallStats.overallRate}%</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white/90 backdrop-blur-xl border border-china/10 rounded-2xl p-4 sm:p-5 shadow-lg">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center flex-shrink-0">
+                                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p className="text-xs sm:text-sm text-china font-medium">Completed</p>
+                                <p className="text-xl sm:text-2xl font-bold text-midnight">{overallStats.totalCompleted}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white/90 backdrop-blur-xl border border-china/10 rounded-2xl p-4 sm:p-5 shadow-lg">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center flex-shrink-0">
+                                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p className="text-xs sm:text-sm text-china font-medium">Possible</p>
+                                <p className="text-xl sm:text-2xl font-bold text-midnight">{overallStats.totalPossible}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white/90 backdrop-blur-xl border border-china/10 rounded-2xl p-4 sm:p-5 shadow-lg">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
+                                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p className="text-xs sm:text-sm text-china font-medium">Habits</p>
+                                <p className="text-xl sm:text-2xl font-bold text-midnight">{overallStats.habitsTracked}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="bg-white/90 backdrop-blur-2xl border border-china/10 rounded-3xl shadow-xl overflow-hidden">
                 {/* Header with Controls */}
                 <div className="px-4 sm:px-6 lg:px-8 py-5 md:py-6 border-b border-porcelain/50 bg-gradient-to-r from-white to-porcelain/30">
@@ -247,20 +394,39 @@ export default function HabitTracker() {
                                 </svg>
                             </button>
                         </div>
-                        <button
-                            className="flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-royal to-china text-white rounded-xl text-sm font-semibold shadow-lg shadow-royal/25 hover:shadow-xl hover:shadow-royal/30 hover:-translate-y-0.5 transition-all active:scale-95"
-                            onClick={() => setIsModalOpen(true)}
-                        >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                            </svg>
-                            <span className="hidden sm:inline">Add Habit</span>
-                            <span className="sm:hidden">Add</span>
-                        </button>
+
+                        <div className="flex items-center gap-2 sm:gap-3">
+                            {/* View Toggle */}
+                            <div className="flex bg-porcelain/50 rounded-xl p-1">
+                                <button
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-midnight' : 'text-china hover:text-midnight'}`}
+                                    onClick={() => { setViewMode('grid'); setSelectedHabit(null); }}
+                                >
+                                    Grid
+                                </button>
+                                <button
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${viewMode === 'calendar' ? 'bg-white shadow-sm text-midnight' : 'text-china hover:text-midnight'}`}
+                                    onClick={() => setViewMode('calendar')}
+                                >
+                                    Calendar
+                                </button>
+                            </div>
+
+                            <button
+                                className="flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-royal to-china text-white rounded-xl text-sm font-semibold shadow-lg shadow-royal/25 hover:shadow-xl hover:shadow-royal/30 hover:-translate-y-0.5 transition-all active:scale-95"
+                                onClick={() => setIsModalOpen(true)}
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                                </svg>
+                                <span className="hidden sm:inline">Add Habit</span>
+                                <span className="sm:hidden">Add</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                {/* Habit Grid */}
+                {/* Main Content */}
                 {isLoading ? (
                     <div className="flex items-center justify-center py-20">
                         <div className="w-12 h-12 border-4 border-porcelain border-t-royal rounded-full animate-spin" />
@@ -284,42 +450,46 @@ export default function HabitTracker() {
                             Create First Habit
                         </button>
                     </div>
-                ) : (
+                ) : viewMode === 'grid' ? (
+                    /* Grid View */
                     <div className="relative">
-                        {/* Fixed habit names column */}
                         <div className="flex">
                             {/* Sticky habit names */}
-                            <div className="flex-shrink-0 w-28 sm:w-36 md:w-44 bg-white z-10 border-r border-porcelain/50">
-                                {/* Header cell */}
+                            <div className="flex-shrink-0 w-28 sm:w-36 md:w-48 bg-white z-10 border-r border-porcelain/50">
                                 <div className="h-14 sm:h-16 px-3 sm:px-4 flex items-center bg-gradient-to-b from-porcelain/50 to-white border-b border-porcelain/30">
                                     <span className="text-xs font-bold text-china uppercase tracking-wider">Habit</span>
                                 </div>
-                                {/* Habit names */}
-                                {habits.map((habit) => (
-                                    <div
-                                        key={habit.id}
-                                        className="h-12 sm:h-14 px-3 sm:px-4 flex items-center gap-2 border-b border-porcelain/30 group hover:bg-dawn/30 transition-colors"
-                                    >
-                                        <span className="text-sm font-medium text-midnight truncate flex-1">
-                                            {habit.name}
-                                        </span>
-                                        <button
-                                            className="opacity-0 group-hover:opacity-100 flex-shrink-0 w-6 h-6 flex items-center justify-center text-china/60 hover:text-red-500 hover:bg-red-50 rounded-md transition-all"
-                                            onClick={() => setDeleteModal({ open: true, habit })}
-                                            aria-label={`Delete ${habit.name}`}
+                                {habits.map((habit) => {
+                                    const stats = calculateStats(habit.id);
+                                    return (
+                                        <div
+                                            key={habit.id}
+                                            className="h-14 sm:h-16 px-3 sm:px-4 flex items-center gap-2 border-b border-porcelain/30 group hover:bg-dawn/30 transition-colors cursor-pointer"
+                                            onClick={() => { setViewMode('calendar'); setSelectedHabit(habit); }}
                                         >
-                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                        </button>
-                                    </div>
-                                ))}
+                                            <div className="flex-1 min-w-0">
+                                                <span className="text-sm font-medium text-midnight truncate block">
+                                                    {habit.name}
+                                                </span>
+                                                <span className="text-xs text-china">{stats.completionRate}% • {stats.currentStreak}🔥</span>
+                                            </div>
+                                            <button
+                                                className="opacity-0 group-hover:opacity-100 flex-shrink-0 w-6 h-6 flex items-center justify-center text-china/60 hover:text-red-500 hover:bg-red-50 rounded-md transition-all"
+                                                onClick={(e) => { e.stopPropagation(); setDeleteModal({ open: true, habit }); }}
+                                                aria-label={`Delete ${habit.name}`}
+                                            >
+                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    );
+                                })}
                             </div>
 
                             {/* Scrollable calendar grid */}
-                            <div className="flex-1 overflow-x-auto scrollbar-thin scrollbar-thumb-china/20 scrollbar-track-transparent">
+                            <div className="flex-1 overflow-x-auto scrollbar-thin">
                                 <div className="min-w-max">
-                                    {/* Day headers */}
                                     <div className="flex h-14 sm:h-16 bg-gradient-to-b from-porcelain/50 to-white border-b border-porcelain/30">
                                         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
                                             const today = isToday(day);
@@ -335,16 +505,15 @@ export default function HabitTracker() {
                                                         {day}
                                                     </span>
                                                     <span className={`text-[10px] font-medium ${today ? 'text-royal' : 'text-china/60'}`}>
-                                                        {currentDate && getDayOfWeek(currentDate, day)}
+                                                        {getDayOfWeek(currentDate, day)}
                                                     </span>
                                                 </div>
                                             );
                                         })}
                                     </div>
 
-                                    {/* Habit rows */}
                                     {habits.map((habit) => (
-                                        <div key={habit.id} className="flex h-12 sm:h-14 border-b border-porcelain/30 hover:bg-dawn/20 transition-colors">
+                                        <div key={habit.id} className="flex h-14 sm:h-16 border-b border-porcelain/30 hover:bg-dawn/20 transition-colors">
                                             {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
                                                 const completed = isCompleted(habit.id, day);
                                                 const today = isToday(day);
@@ -358,8 +527,8 @@ export default function HabitTracker() {
                                 w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-all transform
                                 ${completed
                                                                     ? today
-                                                                        ? 'bg-gradient-to-br from-midnight to-royal shadow-md scale-100'
-                                                                        : 'bg-gradient-to-br from-royal to-china shadow-md scale-100'
+                                                                        ? 'bg-gradient-to-br from-midnight to-royal shadow-md'
+                                                                        : 'bg-gradient-to-br from-royal to-china shadow-md'
                                                                     : today
                                                                         ? 'bg-dawn/50 border-2 border-royal/30 hover:border-royal hover:bg-dawn'
                                                                         : 'bg-porcelain/50 border-2 border-transparent hover:border-china/30 hover:bg-porcelain'
@@ -383,6 +552,109 @@ export default function HabitTracker() {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                ) : (
+                    /* Calendar View - Per Habit */
+                    <div className="p-4 sm:p-6">
+                        {/* Habit Selector */}
+                        <div className="flex flex-wrap gap-2 mb-6">
+                            {habits.map((habit) => (
+                                <button
+                                    key={habit.id}
+                                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${selectedHabit?.id === habit.id
+                                            ? 'bg-gradient-to-r from-royal to-china text-white shadow-md'
+                                            : 'bg-porcelain/50 text-midnight hover:bg-porcelain'
+                                        }`}
+                                    onClick={() => setSelectedHabit(habit)}
+                                >
+                                    {habit.name}
+                                </button>
+                            ))}
+                        </div>
+
+                        {selectedHabit ? (
+                            <>
+                                {/* Habit Stats */}
+                                {(() => {
+                                    const stats = calculateStats(selectedHabit.id);
+                                    return (
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                                            <div className="bg-gradient-to-br from-royal/10 to-china/10 rounded-xl p-4 text-center">
+                                                <p className="text-2xl sm:text-3xl font-bold text-royal">{stats.completionRate}%</p>
+                                                <p className="text-xs text-china mt-1">Completion Rate</p>
+                                            </div>
+                                            <div className="bg-gradient-to-br from-amber-100 to-orange-100 rounded-xl p-4 text-center">
+                                                <p className="text-2xl sm:text-3xl font-bold text-amber-600">{stats.currentStreak}</p>
+                                                <p className="text-xs text-amber-700 mt-1">Current Streak 🔥</p>
+                                            </div>
+                                            <div className="bg-gradient-to-br from-green-100 to-emerald-100 rounded-xl p-4 text-center">
+                                                <p className="text-2xl sm:text-3xl font-bold text-green-600">{stats.bestStreak}</p>
+                                                <p className="text-xs text-green-700 mt-1">Best Streak 🏆</p>
+                                            </div>
+                                            <div className="bg-gradient-to-br from-purple-100 to-indigo-100 rounded-xl p-4 text-center">
+                                                <p className="text-2xl sm:text-3xl font-bold text-purple-600">{stats.totalCompleted}/{stats.totalDays}</p>
+                                                <p className="text-xs text-purple-700 mt-1">Days Completed</p>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+
+                                {/* Calendar Grid */}
+                                <div className="bg-porcelain/30 rounded-2xl p-4">
+                                    {/* Day names header */}
+                                    <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2">
+                                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                                            <div key={day} className="text-center text-xs font-semibold text-china py-2">
+                                                {day}
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Calendar days */}
+                                    <div className="grid grid-cols-7 gap-1 sm:gap-2">
+                                        {/* Empty cells for days before month starts */}
+                                        {Array.from({ length: firstDayOfMonth }, (_, i) => (
+                                            <div key={`empty-${i}`} className="aspect-square" />
+                                        ))}
+
+                                        {/* Actual days */}
+                                        {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
+                                            const completed = isCompleted(selectedHabit.id, day);
+                                            const today = isToday(day);
+                                            return (
+                                                <button
+                                                    key={day}
+                                                    className={`
+                            aspect-square rounded-xl flex flex-col items-center justify-center transition-all
+                            ${completed
+                                                            ? 'bg-gradient-to-br from-royal to-china text-white shadow-md'
+                                                            : today
+                                                                ? 'bg-white border-2 border-royal text-midnight shadow-sm'
+                                                                : 'bg-white hover:bg-dawn/50 text-midnight'
+                                                        }
+                            hover:scale-105 active:scale-95
+                          `}
+                                                    onClick={() => toggleCompletion(selectedHabit.id, day)}
+                                                >
+                                                    <span className={`text-sm sm:text-base font-semibold ${completed ? 'text-white' : ''}`}>
+                                                        {day}
+                                                    </span>
+                                                    {completed && (
+                                                        <svg className="w-3 h-3 sm:w-4 sm:h-4 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="text-center py-12 text-china">
+                                <p>Select a habit above to view its calendar</p>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
