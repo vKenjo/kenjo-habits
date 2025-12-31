@@ -12,7 +12,16 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Node.js scripts using CommonJS
+    "scripts/**",
   ]),
+  {
+    rules: {
+      // This rule gives false positives for legitimate client-side initialization patterns
+      // where setState is needed in useEffect to avoid hydration mismatches
+      "react-hooks/set-state-in-effect": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

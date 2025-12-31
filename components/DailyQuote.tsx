@@ -123,8 +123,8 @@ export default function DailyQuote() {
                     onClick={handleRefresh}
                     disabled={remainingRefreshes === 0}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${remainingRefreshes > 0
-                            ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 active:scale-95'
-                            : 'bg-porcelain text-china/50 cursor-not-allowed'
+                        ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 active:scale-95'
+                        : 'bg-porcelain text-china/50 cursor-not-allowed'
                         }`}
                 >
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -1,0 +1,54 @@
+name: CI/CD Pipeline
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+
+env:
+    NODE_VERSION: "20"
+
+jobs:
+    lint-and-build:
+        name: Lint & Build
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: "npm"
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Run ESLint
+              run: npm run lint
+
+            - name: Type check
+              run: npx tsc --noEmit
+
+            - name: Build application
+              run: npm run build
+              env:
+                  NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+                  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+    # Vercel automatically deploys on push to main after CI passes
+    # This job just confirms we're ready for deployment
+    deploy-ready:
+        name: Deploy Ready
+        needs: lint-and-build
+        runs-on: ubuntu-latest
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+        steps:
+            - name: Confirm deployment ready
+              run: |
+                  echo "✅ All checks passed!"
+                  echo "🚀 Vercel will automatically deploy this commit."
