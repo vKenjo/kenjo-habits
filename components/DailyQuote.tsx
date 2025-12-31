@@ -1,19 +1,19 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { maxims } from '@/lib/maxims';
+import { maxims, Maxim } from '@/lib/maxims';
 
 const MAX_REFRESHES_PER_DAY = 3;
 const STORAGE_KEY = 'kenjo_habits_quote';
 
 interface QuoteState {
-    quote: string;
+    quoteIndex: number;
     refreshCount: number;
     date: string;
 }
 
 export default function DailyQuote() {
-    const [quote, setQuote] = useState<string>('');
+    const [currentMaxim, setCurrentMaxim] = useState<Maxim | null>(null);
     const [refreshCount, setRefreshCount] = useState(0);
     const [isLoaded, setIsLoaded] = useState(false);
 
@@ -21,9 +21,8 @@ export default function DailyQuote() {
         return new Date().toISOString().split('T')[0];
     };
 
-    const getRandomQuote = useCallback(() => {
-        const randomIndex = Math.floor(Math.random() * maxims.length);
-        return maxims[randomIndex];
+    const getRandomIndex = useCallback(() => {
+        return Math.floor(Math.random() * maxims.length);
     }, []);
 
     // Load saved state from localStorage
@@ -36,50 +35,50 @@ export default function DailyQuote() {
                 const parsed: QuoteState = JSON.parse(savedData);
                 if (parsed.date === today) {
                     // Same day - use saved quote and count
-                    setQuote(parsed.quote);
+                    setCurrentMaxim(maxims[parsed.quoteIndex]);
                     setRefreshCount(parsed.refreshCount);
                 } else {
                     // New day - reset
-                    const newQuote = getRandomQuote();
-                    setQuote(newQuote);
+                    const newIndex = getRandomIndex();
+                    setCurrentMaxim(maxims[newIndex]);
                     setRefreshCount(0);
                     localStorage.setItem(STORAGE_KEY, JSON.stringify({
-                        quote: newQuote,
+                        quoteIndex: newIndex,
                         refreshCount: 0,
                         date: today
                     }));
                 }
             } catch {
                 // Invalid data - reset
-                const newQuote = getRandomQuote();
-                setQuote(newQuote);
+                const newIndex = getRandomIndex();
+                setCurrentMaxim(maxims[newIndex]);
                 setRefreshCount(0);
             }
         } else {
             // No saved data - initialize
-            const newQuote = getRandomQuote();
-            setQuote(newQuote);
+            const newIndex = getRandomIndex();
+            setCurrentMaxim(maxims[newIndex]);
             setRefreshCount(0);
             localStorage.setItem(STORAGE_KEY, JSON.stringify({
-                quote: newQuote,
+                quoteIndex: newIndex,
                 refreshCount: 0,
                 date: today
             }));
         }
         setIsLoaded(true);
-    }, [getRandomQuote]);
+    }, [getRandomIndex]);
 
     const handleRefresh = () => {
         if (refreshCount >= MAX_REFRESHES_PER_DAY) return;
 
-        const newQuote = getRandomQuote();
+        const newIndex = getRandomIndex();
         const newCount = refreshCount + 1;
 
-        setQuote(newQuote);
+        setCurrentMaxim(maxims[newIndex]);
         setRefreshCount(newCount);
 
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
-            quote: newQuote,
+            quoteIndex: newIndex,
             refreshCount: newCount,
             date: getTodayString()
         }));
@@ -87,7 +86,7 @@ export default function DailyQuote() {
 
     const remainingRefreshes = MAX_REFRESHES_PER_DAY - refreshCount;
 
-    if (!isLoaded) {
+    if (!isLoaded || !currentMaxim) {
         return (
             <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-4 border border-china/10 animate-pulse">
                 <div className="h-4 bg-porcelain rounded w-3/4 mb-2" />
@@ -106,9 +105,11 @@ export default function DailyQuote() {
                 </div>
                 <div className="flex-1 min-w-0">
                     <p className="text-sm sm:text-base text-midnight leading-relaxed italic">
-                        &quot;{quote}&quot;
+                        &quot;{currentMaxim.text}&quot;
                     </p>
-                    <p className="text-xs text-china mt-2">— La Rochefoucauld</p>
+                    <p className="text-xs text-china mt-2">
+                        — La Rochefoucauld, <span className="font-medium">Maxim #{currentMaxim.number}</span>
+                    </p>
                 </div>
             </div>
 

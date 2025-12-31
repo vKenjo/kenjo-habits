@@ -21,6 +21,7 @@ export default function HabitTracker() {
     const [newHabitName, setNewHabitName] = useState('');
     const [viewMode, setViewMode] = useState<'grid' | 'calendar'>('grid');
     const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
+    const [showStats, setShowStats] = useState(false);
 
     // Initialize date on client side to avoid hydration mismatch
     useEffect(() => {
@@ -684,24 +685,42 @@ export default function HabitTracker() {
                 </div>
             )}
 
-            {/* Bottom Stats Section */}
+            {/* Bottom Stats Section - Collapsible */}
             {overallStats && habits.length > 0 && (
-                <div className="mt-6 bg-white/70 backdrop-blur-sm border border-china/10 rounded-2xl p-4 sm:p-5 shadow-sm">
-                    <h3 className="text-sm font-semibold text-midnight mb-4">Monthly Statistics</h3>
-                    <div className="grid grid-cols-3 gap-4">
-                        <div className="text-center p-3 bg-gradient-to-br from-royal/5 to-china/5 rounded-xl">
-                            <p className="text-2xl sm:text-3xl font-bold text-royal">{overallStats.overallRate}%</p>
-                            <p className="text-xs text-china mt-1">Completion Rate</p>
+                <div className="mt-6">
+                    <button
+                        onClick={() => setShowStats(!showStats)}
+                        className="flex items-center gap-2 text-sm font-medium text-china hover:text-midnight transition-colors mb-2"
+                    >
+                        <svg
+                            className={`w-4 h-4 transition-transform ${showStats ? 'rotate-90' : ''}`}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                        {showStats ? 'Hide' : 'Show'} Monthly Statistics
+                    </button>
+
+                    {showStats && (
+                        <div className="bg-white/70 backdrop-blur-sm border border-china/10 rounded-2xl p-4 sm:p-5 shadow-sm animate-fade-in">
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="text-center p-3 bg-gradient-to-br from-royal/5 to-china/5 rounded-xl">
+                                    <p className="text-2xl sm:text-3xl font-bold text-royal">{overallStats.overallRate}%</p>
+                                    <p className="text-xs text-china mt-1">Completion Rate</p>
+                                </div>
+                                <div className="text-center p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl">
+                                    <p className="text-2xl sm:text-3xl font-bold text-green-600">{overallStats.totalCompleted}</p>
+                                    <p className="text-xs text-green-700 mt-1">Tasks Completed</p>
+                                </div>
+                                <div className="text-center p-3 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl">
+                                    <p className="text-2xl sm:text-3xl font-bold text-purple-600">{overallStats.habitsTracked}</p>
+                                    <p className="text-xs text-purple-700 mt-1">Habits Tracked</p>
+                                </div>
+                            </div>
                         </div>
-                        <div className="text-center p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl">
-                            <p className="text-2xl sm:text-3xl font-bold text-green-600">{overallStats.totalCompleted}</p>
-                            <p className="text-xs text-green-700 mt-1">Tasks Completed</p>
-                        </div>
-                        <div className="text-center p-3 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl">
-                            <p className="text-2xl sm:text-3xl font-bold text-purple-600">{overallStats.habitsTracked}</p>
-                            <p className="text-xs text-purple-700 mt-1">Habits Tracked</p>
-                        </div>
-                    </div>
+                    )}
                 </div>
             )}
         </>
