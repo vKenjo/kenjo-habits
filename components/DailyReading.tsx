@@ -162,7 +162,7 @@ export default function DailyReading() {
 
     return (
         <>
-            <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-4 sm:p-5 border border-china/10 shadow-sm">
+            <div className="bg-transparent p-4">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
@@ -245,8 +245,8 @@ function BookCard({
         <button
             onClick={onClick}
             className={`group relative flex flex-col w-full p-4 rounded-2xl border-2 transition-all duration-300 hover:shadow-lg cursor-pointer text-left overflow-hidden ${isCompleted
-                    ? 'bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200 hover:border-emerald-300'
-                    : 'bg-white border-china/10 hover:border-royal/30 hover:bg-royal/[0.02]'
+                ? 'bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200 hover:border-emerald-300'
+                : 'bg-white border-china/10 hover:border-royal/30 hover:bg-royal/[0.02]'
                 }`}
         >
             {/* Completion ribbon */}
@@ -262,8 +262,8 @@ function BookCard({
 
             {/* Large Icon */}
             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 transition-transform group-hover:scale-105 ${isCompleted
-                    ? 'bg-white/80 shadow-sm'
-                    : 'bg-gradient-to-br from-porcelain to-white shadow-sm'
+                ? 'bg-white/80 shadow-sm'
+                : 'bg-gradient-to-br from-porcelain to-white shadow-sm'
                 }`}>
                 <span className="text-3xl" role="img" aria-label={book.title}>
                     {book.icon}

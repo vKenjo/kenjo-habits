@@ -308,7 +308,7 @@ export default function HabitTracker() {
     return (
         <>
 
-            <div className="bg-white/90 backdrop-blur-2xl border border-china/10 rounded-3xl shadow-xl overflow-hidden">
+            <div className="bg-transparent">
                 {/* Header with Controls */}
                 <div className="px-4 sm:px-6 lg:px-8 py-5 md:py-6 border-b border-porcelain/50 bg-gradient-to-r from-white to-porcelain/30">
                     <div className="flex items-center justify-between gap-4 flex-wrap">
