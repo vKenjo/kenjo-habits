@@ -245,55 +245,54 @@ function BookCard({
     return (
         <button
             onClick={onClick}
-            className={`relative overflow-hidden rounded-2xl p-4 bg-gradient-to-br ${book.color} border transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 group text-left w-full cursor-pointer active:scale-[0.98] ${isCompleted
+            className={`relative overflow-hidden rounded-2xl p-5 bg-gradient-to-br ${book.color} border transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group text-left w-full cursor-pointer active:scale-[0.98] ${isCompleted
                     ? 'border-royal/20 ring-2 ring-royal/10'
                     : 'border-china/5 hover:border-china/15'
                 }`}
         >
-            {/* Top row: Icon + Title + Author */}
-            <div className="flex items-start gap-3 mb-3">
-                <div className={`flex-shrink-0 w-10 h-10 rounded-xl bg-white/60 backdrop-blur-sm flex items-center justify-center shadow-sm ${isCompleted ? 'ring-2 ring-green-400/50' : ''
+            {/* Header: Icon + Badges */}
+            <div className="flex items-center justify-between mb-4">
+                <div className={`w-12 h-12 rounded-xl bg-white/70 backdrop-blur-sm flex items-center justify-center shadow-sm ${isCompleted ? 'ring-2 ring-green-400/50' : ''
                     }`}>
-                    <span className="text-xl" role="img" aria-label={book.title}>
+                    <span className="text-2xl" role="img" aria-label={book.title}>
                         {book.icon}
                     </span>
                 </div>
-                <div className="min-w-0 flex-1 pt-0.5">
-                    <h3 className="text-sm font-bold text-midnight truncate group-hover:text-royal transition-colors">
-                        {book.shortTitle}
-                    </h3>
-                    <p className="text-xs text-china/70 truncate">{book.author}</p>
-                </div>
-                {/* Arrow indicator */}
-                <svg className="w-4 h-4 text-china/30 group-hover:text-royal/60 transition-all group-hover:translate-x-0.5 flex-shrink-0 mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-            </div>
 
-            {/* Bottom row: Date + Streak + Checkmark */}
-            <div className="flex items-center justify-between gap-2">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-white/70 text-midnight/60 backdrop-blur-sm">
-                    <span className="text-sm">📅</span>
-                    <span>{dateLabel}</span>
-                </span>
-
+                {/* Badges */}
                 <div className="flex items-center gap-2">
-                    {/* Streak Badge */}
                     {streak > 0 && (
-                        <span className="streak-badge inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold bg-gradient-to-r from-orange-400 to-amber-400 text-white shadow-sm">
+                        <span className="streak-badge inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-gradient-to-r from-orange-400 to-amber-400 text-white shadow-sm">
                             🔥 {streak}
                         </span>
                     )}
-
-                    {/* Completed checkmark */}
                     {isCompleted && (
-                        <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-sm">
-                            <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-sm">
+                            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                             </svg>
                         </div>
                     )}
                 </div>
+            </div>
+
+            {/* Title & Author */}
+            <div className="mb-3">
+                <h3 className="text-base font-bold text-midnight group-hover:text-royal transition-colors leading-tight">
+                    {book.shortTitle}
+                </h3>
+                <p className="text-sm text-china/70 mt-0.5">{book.author}</p>
+            </div>
+
+            {/* Footer: Date + Arrow */}
+            <div className="flex items-center justify-between">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/70 text-midnight/60 backdrop-blur-sm">
+                    <span>📅</span>
+                    <span>{dateLabel}</span>
+                </span>
+                <svg className="w-5 h-5 text-china/30 group-hover:text-royal/60 transition-all group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
             </div>
         </button>
     );
