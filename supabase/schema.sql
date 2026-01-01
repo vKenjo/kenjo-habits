@@ -48,3 +48,30 @@ CREATE POLICY "Allow public insert on habit_completions" ON habit_completions
 
 CREATE POLICY "Allow public delete on habit_completions" ON habit_completions
   FOR DELETE USING (true);
+
+-- Create reading ratings table
+CREATE TABLE IF NOT EXISTS reading_ratings (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  book_id TEXT NOT NULL,
+  reading_date DATE NOT NULL,
+  rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(book_id, reading_date)
+);
+
+-- Create index for better performance
+CREATE INDEX IF NOT EXISTS idx_reading_ratings_book_date ON reading_ratings(book_id, reading_date);
+
+-- Allow public read/write on reading_ratings
+CREATE POLICY "Allow public read on reading_ratings" ON reading_ratings
+  FOR SELECT USING (true);
+
+CREATE POLICY "Allow public insert on reading_ratings" ON reading_ratings
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Allow public update on reading_ratings" ON reading_ratings
+  FOR UPDATE USING (true);
+
+CREATE POLICY "Allow public delete on reading_ratings" ON reading_ratings
+  FOR DELETE USING (true);

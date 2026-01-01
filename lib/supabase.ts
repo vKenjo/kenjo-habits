@@ -30,3 +30,12 @@ export interface HabitCompletion {
     completed_date: string;
     created_at: string;
 }
+
+export interface ReadingRating {
+    id: string;
+    book_id: string;
+    reading_date: string;
+    rating: number;
+    created_at: string;
+    updated_at: string;
+}

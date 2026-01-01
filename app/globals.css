@@ -121,3 +121,75 @@ body {
     padding: 1.5rem;
   }
 }
+
+/* Reading content styles */
+.prose .author-attribution,
+.prose blockquote+p:first-of-type,
+.reading-content .author-quote {
+  margin-top: 0.5rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.25rem;
+  font-style: italic;
+  color: var(--color-china);
+  font-size: 0.95em;
+  background: linear-gradient(135deg, rgba(112, 150, 209, 0.08), rgba(51, 78, 172, 0.05));
+  border-left: 3px solid var(--color-china);
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+/* Drop cap for first paragraph */
+.reading-content>p:first-of-type::first-letter {
+  float: left;
+  font-size: 3.5em;
+  line-height: 0.8;
+  padding-right: 0.15em;
+  font-weight: 700;
+  color: var(--color-royal);
+}
+
+/* Streak badge animation */
+@keyframes fireGlow {
+
+  0%,
+  100% {
+    filter: drop-shadow(0 0 2px rgba(255, 140, 0, 0.5));
+  }
+
+  50% {
+    filter: drop-shadow(0 0 6px rgba(255, 140, 0, 0.8));
+  }
+}
+
+.streak-badge {
+  animation: fireGlow 2s ease-in-out infinite;
+}
+
+/* Completed book card glow */
+.book-card-completed {
+  box-shadow: 0 0 0 2px rgba(51, 78, 172, 0.2), 0 4px 12px rgba(51, 78, 172, 0.15);
+}
+
+/* Reading-specific blockquote styling */
+.reading-content blockquote {
+  margin: 1.5rem 0;
+  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, rgba(247, 242, 235, 0.8), rgba(237, 241, 246, 0.6));
+  border-left: 4px solid var(--color-royal);
+  border-radius: 0 0.75rem 0.75rem 0;
+  font-style: italic;
+}
+
+/* Heading in reading content */
+.reading-content h2,
+.reading-content h3 {
+  color: var(--color-midnight);
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+/* Daily Law highlight */
+.reading-content strong {
+  color: var(--color-royal);
+  font-weight: 600;
+}

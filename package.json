@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.89.0",
+    "epub2": "^3.0.2",
     "next": "16.1.1",
     "pg": "^8.16.3",
     "react": "19.2.3",

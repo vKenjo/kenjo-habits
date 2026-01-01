@@ -1,5 +1,6 @@
 import HabitTracker from '@/components/HabitTracker';
 import DailyQuote from '@/components/DailyQuote';
+import DailyReading from '@/components/DailyReading';
 
 export default function Home() {
   return (
@@ -13,9 +14,10 @@ export default function Home() {
       <div className="relative max-w-5xl mx-auto px-4 py-6 sm:px-6 sm:py-8 md:px-8 md:py-12 lg:py-16">
         {/* Top Section: Quote on left, Header on right */}
         <div className="grid grid-cols-1 lg:grid-cols-8 gap-6 mb-6 sm:mb-8">
-          {/* Daily Quote */}
-          <div className="lg:col-span-3">
+          {/* Daily Quote & Reading */}
+          <div className="lg:col-span-3 space-y-4">
             <DailyQuote />
+            <DailyReading />
           </div>
 
           {/* Header */}
