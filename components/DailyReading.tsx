@@ -245,45 +245,54 @@ function BookCard({
     return (
         <button
             onClick={onClick}
-            className={`relative overflow-hidden rounded-xl p-3.5 bg-gradient-to-br ${book.color} border transition-all hover:shadow-lg group text-left w-full cursor-pointer active:scale-[0.98] ${isCompleted
-                    ? 'border-royal/30 book-card-completed'
-                    : 'border-china/5 hover:border-china/20'
+            className={`relative overflow-hidden rounded-2xl p-4 bg-gradient-to-br ${book.color} border transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 group text-left w-full cursor-pointer active:scale-[0.98] ${isCompleted
+                    ? 'border-royal/20 ring-2 ring-royal/10'
+                    : 'border-china/5 hover:border-china/15'
                 }`}
         >
-            {/* Streak Badge */}
-            {streak > 0 && (
-                <div className="absolute top-2 right-2 streak-badge">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-gradient-to-r from-orange-400 to-amber-400 text-white shadow-sm">
-                        🔥 {streak}
+            {/* Top row: Icon + Title + Author */}
+            <div className="flex items-start gap-3 mb-3">
+                <div className={`flex-shrink-0 w-10 h-10 rounded-xl bg-white/60 backdrop-blur-sm flex items-center justify-center shadow-sm ${isCompleted ? 'ring-2 ring-green-400/50' : ''
+                    }`}>
+                    <span className="text-xl" role="img" aria-label={book.title}>
+                        {book.icon}
                     </span>
                 </div>
-            )}
-
-            {/* Completed checkmark */}
-            {isCompleted && (
-                <div className="absolute bottom-2 right-2">
-                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-sm">
-                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                    </div>
-                </div>
-            )}
-
-            <div className="flex items-start gap-3">
-                <span className="text-2xl flex-shrink-0 mt-0.5" role="img" aria-label={book.title}>
-                    {book.icon}
-                </span>
-                <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-semibold text-midnight truncate group-hover:text-royal transition-colors">
+                <div className="min-w-0 flex-1 pt-0.5">
+                    <h3 className="text-sm font-bold text-midnight truncate group-hover:text-royal transition-colors">
                         {book.shortTitle}
                     </h3>
-                    <p className="text-xs text-china/80 truncate">{book.author}</p>
-                    <div className="mt-2">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-white/80 text-midnight/70 backdrop-blur-sm">
-                            📅 {dateLabel}
+                    <p className="text-xs text-china/70 truncate">{book.author}</p>
+                </div>
+                {/* Arrow indicator */}
+                <svg className="w-4 h-4 text-china/30 group-hover:text-royal/60 transition-all group-hover:translate-x-0.5 flex-shrink-0 mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+            </div>
+
+            {/* Bottom row: Date + Streak + Checkmark */}
+            <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-white/70 text-midnight/60 backdrop-blur-sm">
+                    <span className="text-sm">📅</span>
+                    <span>{dateLabel}</span>
+                </span>
+
+                <div className="flex items-center gap-2">
+                    {/* Streak Badge */}
+                    {streak > 0 && (
+                        <span className="streak-badge inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold bg-gradient-to-r from-orange-400 to-amber-400 text-white shadow-sm">
+                            🔥 {streak}
                         </span>
-                    </div>
+                    )}
+
+                    {/* Completed checkmark */}
+                    {isCompleted && (
+                        <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-sm">
+                            <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                    )}
                 </div>
             </div>
         </button>
@@ -382,8 +391,8 @@ function ReadingModal({
                             <button
                                 onClick={() => setShowMonthOverview(false)}
                                 className={`px-4 py-2 text-xs font-medium rounded-lg transition-all ${!showMonthOverview
-                                        ? 'bg-white text-midnight shadow-sm'
-                                        : 'text-china hover:text-midnight'
+                                    ? 'bg-white text-midnight shadow-sm'
+                                    : 'text-china hover:text-midnight'
                                     }`}
                             >
                                 📖 Today&apos;s Reading
@@ -391,8 +400,8 @@ function ReadingModal({
                             <button
                                 onClick={() => setShowMonthOverview(true)}
                                 className={`px-4 py-2 text-xs font-medium rounded-lg transition-all ${showMonthOverview
-                                        ? 'bg-white text-midnight shadow-sm'
-                                        : 'text-china hover:text-midnight'
+                                    ? 'bg-white text-midnight shadow-sm'
+                                    : 'text-china hover:text-midnight'
                                     }`}
                             >
                                 📚 {monthName} Overview
@@ -449,8 +458,8 @@ function ReadingModal({
                                                 onClick={() => onRate(rating)}
                                                 disabled={isSavingRating}
                                                 className={`group relative p-3 rounded-xl transition-all ${isSelected
-                                                        ? 'bg-gradient-to-br from-royal/15 to-china/10 ring-2 ring-royal/40 scale-110'
-                                                        : 'hover:bg-porcelain hover:scale-105'
+                                                    ? 'bg-gradient-to-br from-royal/15 to-china/10 ring-2 ring-royal/40 scale-110'
+                                                    : 'hover:bg-porcelain hover:scale-105'
                                                     } ${isSavingRating ? 'opacity-50' : ''}`}
                                                 title={RATING_LABELS[index]}
                                             >
