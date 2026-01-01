@@ -9,19 +9,23 @@ export default function DailyJournal() {
     const [isSaving, setIsSaving] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    // Get today's date string for storage key
-    const getTodayKey = () => {
+    // Get today's date string YYYY-MM-DD
+    const getTodayDateString = () => {
         const today = new Date();
-        return `${STORAGE_KEY_PREFIX}${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+        return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     };
 
-    // Load saved journal
+    // Load saved journal from API
     useEffect(() => {
-        const key = getTodayKey();
-        const saved = localStorage.getItem(key);
-        if (saved) {
-            setContent(saved);
-        }
+        const date = getTodayDateString();
+        fetch(`/api/journal?date=${date}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.content) {
+                    setContent(data.content);
+                }
+            })
+            .catch(err => console.error('Failed to load journal:', err));
     }, []);
 
     // Auto-resize textarea
@@ -32,16 +36,23 @@ export default function DailyJournal() {
         }
     }, [content]);
 
-    // Save on change with debounce
+    // Save on change with debounce to API
     useEffect(() => {
-        const key = getTodayKey();
+        const date = getTodayDateString();
         const timeoutId = setTimeout(() => {
             if (content) {
-                localStorage.setItem(key, content);
                 setIsSaving(true);
-                setTimeout(() => setIsSaving(false), 1000);
-            } else {
-                localStorage.removeItem(key);
+                fetch('/api/journal', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ date, content })
+                })
+                    .then(res => {
+                        if (res.ok) {
+                            setTimeout(() => setIsSaving(false), 1000);
+                        }
+                    })
+                    .catch(err => console.error('Failed to save journal:', err));
             }
         }, 1000);
 

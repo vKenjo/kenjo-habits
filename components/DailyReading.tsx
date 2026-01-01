@@ -36,10 +36,13 @@ function getDateFromDayOfYear(dayOfYear: number): { monthName: string; dayOfMont
     };
 }
 
+import HistoryModal from './HistoryModal';
+
 export default function DailyReading() {
     const [dayOfYear, setDayOfYear] = useState<number>(1);
     const [displayDateString, setDisplayDateString] = useState<string>('');
     const [isExpanded, setIsExpanded] = useState(true);
+    const [showHistory, setShowHistory] = useState(false);
     const [isLoaded, setIsLoaded] = useState(false);
     const [selectedBook, setSelectedBook] = useState<DailyBook | null>(null);
     const [readingContent, setReadingContent] = useState<ReadingContent | null>(null);
@@ -177,17 +180,13 @@ export default function DailyReading() {
                         </div>
                     </div>
                     <button
-                        onClick={() => setIsExpanded(!isExpanded)}
-                        className="p-2 rounded-lg hover:bg-porcelain/50 transition-colors"
-                        aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                        onClick={() => setShowHistory(true)}
+                        className="p-2 rounded-lg hover:bg-porcelain/50 transition-colors text-china hover:text-midnight flex items-center gap-1.5"
+                        aria-label="View History"
                     >
-                        <svg
-                            className={`w-4 h-4 text-china transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        <span className="text-xs font-semibold">History</span>
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </button>
                 </div>
@@ -225,6 +224,9 @@ export default function DailyReading() {
                     isSavingRating={isSavingRating}
                 />
             )}
+
+            {/* History Modal */}
+            {showHistory && <HistoryModal onClose={() => setShowHistory(false)} />}
         </>
     );
 }
@@ -249,8 +251,8 @@ function BookCard({
             {/* Left: Icon & Info */}
             <div className="flex items-center gap-4 overflow-hidden">
                 <div className={`flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all shadow-sm ${isCompleted
-                        ? 'bg-gradient-to-br from-emerald-100 to-emerald-50 text-emerald-600'
-                        : 'bg-white text-midnight group-hover:scale-105'
+                    ? 'bg-gradient-to-br from-emerald-100 to-emerald-50 text-emerald-600'
+                    : 'bg-white text-midnight group-hover:scale-105'
                     }`}>
                     <span className="text-xl" role="img" aria-label={book.title}>
                         {book.icon}
