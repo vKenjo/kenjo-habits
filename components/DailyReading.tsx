@@ -244,13 +244,13 @@ function BookCard({
     return (
         <button
             onClick={onClick}
-            className="group flex items-center justify-between w-full p-3 rounded-xl hover:bg-white/50 transition-colors cursor-pointer text-left border border-transparent hover:border-china/5"
+            className="group flex items-center justify-between w-full p-3 rounded-2xl hover:bg-white/40 transition-all duration-300 cursor-pointer text-left border border-transparent hover:border-white/40 hover:shadow-sm"
         >
             {/* Left: Icon & Info */}
-            <div className="flex items-center gap-3 overflow-hidden">
-                <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${isCompleted
-                    ? 'bg-emerald-50 text-emerald-600'
-                    : 'bg-royal/5 text-midnight'
+            <div className="flex items-center gap-4 overflow-hidden">
+                <div className={`flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all shadow-sm ${isCompleted
+                        ? 'bg-gradient-to-br from-emerald-100 to-emerald-50 text-emerald-600'
+                        : 'bg-white text-midnight group-hover:scale-105'
                     }`}>
                     <span className="text-xl" role="img" aria-label={book.title}>
                         {book.icon}
@@ -258,16 +258,19 @@ function BookCard({
                 </div>
 
                 <div className="flex-1 min-w-0">
-                    <h3 className={`text-sm font-medium truncate transition-colors ${isCompleted ? 'text-china/70 line-through' : 'text-midnight'
+                    <h3 className={`text-sm font-bold truncate transition-colors ${isCompleted ? 'text-china/60' : 'text-midnight group-hover:text-royal'
                         }`}>
                         {book.shortTitle}
                     </h3>
-                    <div className="flex items-center gap-2">
-                        <p className="text-[10px] text-china/50 uppercase tracking-wider">{book.author}</p>
+                    <div className="flex items-center gap-3">
+                        <p className="text-[11px] font-medium text-china/50 uppercase tracking-widest">{book.author}</p>
                         {streak > 0 && (
-                            <span className="flex items-center gap-0.5 text-[10px] font-bold text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded-full">
-                                🔥 {streak}
-                            </span>
+                            <div className="flex items-center gap-1">
+                                <span className="w-1 h-1 rounded-full bg-china/20" />
+                                <span className="flex items-center gap-0.5 text-[11px] font-bold text-amber-500">
+                                    🔥 {streak}
+                                </span>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -276,13 +279,17 @@ function BookCard({
             {/* Right: Action */}
             <div className="flex-shrink-0 ml-3">
                 {isCompleted ? (
-                    <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
-                        <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <div className="group/check w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center shadow-md shadow-emerald-500/20 transition-transform group-hover:scale-110">
+                        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                         </svg>
                     </div>
                 ) : (
-                    <div className="w-6 h-6 rounded-full border-2 border-china/20 group-hover:border-royal/40 group-hover:bg-royal/5 transition-all" />
+                    <div className="w-8 h-8 rounded-full border-2 border-china/10 group-hover:border-royal/30 group-hover:bg-white flex items-center justify-center transition-all">
+                        <svg className="w-4 h-4 text-royal opacity-0 group-hover:opacity-100 transition-opacity transform scale-75 group-hover:scale-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
                 )}
             </div>
         </button>

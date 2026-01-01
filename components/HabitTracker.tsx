@@ -690,17 +690,19 @@ export default function HabitTracker() {
                 <div className="mt-6">
                     <button
                         onClick={() => setShowStats(!showStats)}
-                        className="flex items-center gap-2 text-sm font-medium text-china hover:text-midnight transition-colors mb-2"
+                        className="group flex items-center gap-2 text-sm font-semibold text-china hover:text-royal transition-all mb-3 ml-1"
                     >
-                        <svg
-                            className={`w-4 h-4 transition-transform ${showStats ? 'rotate-90' : ''}`}
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                        {showStats ? 'Hide' : 'Show'} Monthly Statistics
+                        <div className={`w-5 h-5 rounded-full bg-porcelain group-hover:bg-royal/10 flex items-center justify-center transition-colors ${showStats ? 'bg-royal/10 text-royal' : ''}`}>
+                            <svg
+                                className={`w-3 h-3 transition-transform duration-300 ${showStats ? 'rotate-180' : ''}`}
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                        <span>{showStats ? 'Hide' : 'Show'} Monthly Statistics</span>
                     </button>
 
                     {showStats && (
