@@ -192,7 +192,7 @@ export default function DailyReading() {
                     </button>
                 </div>
 
-                {/* Book Cards */}
+                {/* Book Rows */}
                 {isExpanded && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 animate-fade-in">
                         {dailyBooks.map((book: DailyBook) => (
@@ -231,7 +231,6 @@ export default function DailyReading() {
 
 function BookCard({
     book,
-    dateLabel,
     streak,
     isCompleted,
     onClick
@@ -245,52 +244,55 @@ function BookCard({
     return (
         <button
             onClick={onClick}
-            className={`relative overflow-hidden rounded-2xl p-5 bg-gradient-to-br ${book.color} border transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group text-left w-full cursor-pointer active:scale-[0.98] ${isCompleted
-                    ? 'border-royal/20 ring-2 ring-royal/10'
-                    : 'border-china/5 hover:border-china/15'
+            className={`flex items-center gap-4 w-full px-4 py-3 rounded-xl border transition-all duration-200 hover:shadow-md group cursor-pointer text-left ${isCompleted
+                ? 'bg-royal/5 border-royal/20 hover:bg-royal/10'
+                : 'bg-porcelain/30 border-china/10 hover:bg-porcelain/50 hover:border-china/20'
                 }`}
         >
-            {/* Header: Icon + Badges */}
-            <div className="flex items-center justify-between mb-4">
-                <div className={`w-12 h-12 rounded-xl bg-white/70 backdrop-blur-sm flex items-center justify-center shadow-sm ${isCompleted ? 'ring-2 ring-green-400/50' : ''
-                    }`}>
-                    <span className="text-2xl" role="img" aria-label={book.title}>
-                        {book.icon}
-                    </span>
-                </div>
-
-                {/* Badges */}
-                <div className="flex items-center gap-2">
-                    {streak > 0 && (
-                        <span className="streak-badge inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-gradient-to-r from-orange-400 to-amber-400 text-white shadow-sm">
-                            🔥 {streak}
-                        </span>
-                    )}
-                    {isCompleted && (
-                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-sm">
-                            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                        </div>
-                    )}
-                </div>
+            {/* Icon */}
+            <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${isCompleted
+                ? 'bg-gradient-to-br from-royal/20 to-china/10'
+                : 'bg-white/70'
+                }`}>
+                <span className="text-xl" role="img" aria-label={book.title}>
+                    {book.icon}
+                </span>
             </div>
 
             {/* Title & Author */}
-            <div className="mb-3">
-                <h3 className="text-base font-bold text-midnight group-hover:text-royal transition-colors leading-tight">
+            <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-semibold text-midnight group-hover:text-royal transition-colors">
                     {book.shortTitle}
                 </h3>
-                <p className="text-sm text-china/70 mt-0.5">{book.author}</p>
+                <p className="text-xs text-china/60">{book.author}</p>
             </div>
 
-            {/* Footer: Date + Arrow */}
-            <div className="flex items-center justify-between">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/70 text-midnight/60 backdrop-blur-sm">
-                    <span>📅</span>
-                    <span>{dateLabel}</span>
-                </span>
-                <svg className="w-5 h-5 text-china/30 group-hover:text-royal/60 transition-all group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            {/* Right side: Streak + Status + Arrow */}
+            <div className="flex items-center gap-3 flex-shrink-0">
+                {streak > 0 && (
+                    <span className="streak-badge inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold bg-gradient-to-r from-orange-400 to-amber-400 text-white shadow-sm">
+                        🔥 {streak}
+                    </span>
+                )}
+
+                {/* Status indicator */}
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${isCompleted
+                    ? 'bg-gradient-to-br from-green-400 to-emerald-500'
+                    : 'bg-porcelain border border-china/10'
+                    }`}>
+                    {isCompleted ? (
+                        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                    ) : (
+                        <svg className="w-3.5 h-3.5 text-china/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                    )}
+                </div>
+
+                {/* Arrow */}
+                <svg className="w-4 h-4 text-china/30 group-hover:text-royal/60 transition-all group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
             </div>
