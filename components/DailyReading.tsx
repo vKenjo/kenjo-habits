@@ -194,7 +194,7 @@ export default function DailyReading() {
 
                 {/* Book Rows */}
                 {isExpanded && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 animate-fade-in">
+                    <div className="flex flex-col gap-1 animate-fade-in mt-1">
                         {dailyBooks.map((book: DailyBook) => (
                             <BookCard
                                 key={book.id}
@@ -244,56 +244,46 @@ function BookCard({
     return (
         <button
             onClick={onClick}
-            className={`group relative flex flex-col w-full p-4 rounded-2xl border-2 transition-all duration-300 hover:shadow-lg cursor-pointer text-left overflow-hidden ${isCompleted
-                ? 'bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200 hover:border-emerald-300'
-                : 'bg-white border-china/10 hover:border-royal/30 hover:bg-royal/[0.02]'
-                }`}
+            className="group flex items-center justify-between w-full p-3 rounded-xl hover:bg-white/50 transition-colors cursor-pointer text-left border border-transparent hover:border-china/5"
         >
-            {/* Completion ribbon */}
-            {isCompleted && (
-                <div className="absolute top-3 right-3">
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center shadow-sm">
-                        <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+            {/* Left: Icon & Info */}
+            <div className="flex items-center gap-3 overflow-hidden">
+                <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${isCompleted
+                    ? 'bg-emerald-50 text-emerald-600'
+                    : 'bg-royal/5 text-midnight'
+                    }`}>
+                    <span className="text-xl" role="img" aria-label={book.title}>
+                        {book.icon}
+                    </span>
+                </div>
+
+                <div className="flex-1 min-w-0">
+                    <h3 className={`text-sm font-medium truncate transition-colors ${isCompleted ? 'text-china/70 line-through' : 'text-midnight'
+                        }`}>
+                        {book.shortTitle}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                        <p className="text-[10px] text-china/50 uppercase tracking-wider">{book.author}</p>
+                        {streak > 0 && (
+                            <span className="flex items-center gap-0.5 text-[10px] font-bold text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded-full">
+                                🔥 {streak}
+                            </span>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Right: Action */}
+            <div className="flex-shrink-0 ml-3">
+                {isCompleted ? (
+                    <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
+                        <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                         </svg>
                     </div>
-                </div>
-            )}
-
-            {/* Large Icon */}
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 transition-transform group-hover:scale-105 ${isCompleted
-                ? 'bg-white/80 shadow-sm'
-                : 'bg-gradient-to-br from-porcelain to-white shadow-sm'
-                }`}>
-                <span className="text-3xl" role="img" aria-label={book.title}>
-                    {book.icon}
-                </span>
-            </div>
-
-            {/* Title & Author */}
-            <div className="flex-1 mb-3">
-                <h3 className="text-sm font-bold text-midnight group-hover:text-royal transition-colors leading-snug mb-0.5">
-                    {book.shortTitle}
-                </h3>
-                <p className="text-xs text-china/60">{book.author}</p>
-            </div>
-
-            {/* Footer: Streak + Read prompt */}
-            <div className="flex items-center justify-between pt-2 border-t border-china/5">
-                {streak > 0 ? (
-                    <span className="streak-badge inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-orange-400 to-amber-400 text-white shadow-sm">
-                        🔥 {streak} day{streak !== 1 ? 's' : ''}
-                    </span>
                 ) : (
-                    <span className="text-xs text-china/40">Start streak</span>
+                    <div className="w-6 h-6 rounded-full border-2 border-china/20 group-hover:border-royal/40 group-hover:bg-royal/5 transition-all" />
                 )}
-
-                <div className="flex items-center gap-1 text-xs font-medium text-royal/60 group-hover:text-royal transition-colors">
-                    <span>{isCompleted ? 'Read again' : 'Read now'}</span>
-                    <svg className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
-                </div>
             </div>
         </button>
     );

@@ -1,6 +1,7 @@
 import HabitTracker from '@/components/HabitTracker';
 import DailyQuote from '@/components/DailyQuote';
 import DailyReading from '@/components/DailyReading';
+import DailyJournal from '@/components/DailyJournal';
 
 export default function Home() {
   return (
@@ -51,6 +52,11 @@ export default function Home() {
             {/* Reading Section */}
             <div className="bg-white/60 backdrop-blur-xl rounded-3xl p-1 shadow-sm border border-white/50">
               <DailyReading />
+            </div>
+
+            {/* Journal Section */}
+            <div className="bg-white/60 backdrop-blur-xl rounded-3xl p-1 shadow-sm border border-white/50">
+              <DailyJournal />
             </div>
           </div>
 
