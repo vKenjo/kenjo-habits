@@ -116,38 +116,48 @@ export default function HabitTracker() {
     const calculateStats = useCallback((habitId: string): HabitStats => {
         if (!currentDate) return { completionRate: 0, currentStreak: 0, bestStreak: 0, totalCompleted: 0, totalDays: 0 };
 
+        const currentMonthStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+
+        // Filter completions for this month
+        // IMPORTANT: Ensure unique dates to prevent potential duplicates from skewing stats
+        const habitCompletions = completions.filter(c =>
+            c.habit_id === habitId &&
+            c.completed_date.startsWith(currentMonthStr)
+        );
+        const uniqueDates = new Set(habitCompletions.map(c => c.completed_date));
+
         const today = new Date();
         const daysInMonth = getDaysInMonth(currentDate);
         const isCurrentMonth = today.getMonth() === currentDate.getMonth() && today.getFullYear() === currentDate.getFullYear();
+
+        // For stats, we usually care about "days passed so far" if it's the current month
         const totalDays = isCurrentMonth ? today.getDate() : daysInMonth;
 
-        const habitCompletions = completions.filter(c => c.habit_id === habitId);
-        const totalCompleted = habitCompletions.length;
+        // Count completed days
+        let totalCompleted = 0;
+        if (isCurrentMonth) {
+            // Only count completions up to today to avoid >100% if future dates are checked
+            const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            uniqueDates.forEach(date => {
+                if (date <= todayStr) totalCompleted++;
+            });
+        } else {
+            totalCompleted = uniqueDates.size;
+        }
+
         const completionRate = totalDays > 0 ? Math.round((totalCompleted / totalDays) * 100) : 0;
 
         // Calculate streaks
-        let currentStreak = 0;
         let bestStreak = 0;
         let tempStreak = 0;
 
-        const completedDates = new Set(habitCompletions.map(c => c.completed_date));
-
-        // Check from today backwards for current streak
-        for (let i = totalDays; i >= 1; i--) {
-            const dateStr = formatDate(currentDate, i);
-            if (completedDates.has(dateStr)) {
-                if (i === totalDays || currentStreak > 0) {
-                    currentStreak++;
-                }
-            } else if (currentStreak > 0) {
-                break;
-            }
-        }
-
-        // Calculate best streak
+        // Simple streak calculation iterating through days of month
         for (let i = 1; i <= daysInMonth; i++) {
             const dateStr = formatDate(currentDate, i);
-            if (completedDates.has(dateStr)) {
+            // Don't count streaks into the future
+            if (isCurrentMonth && i > today.getDate()) break;
+
+            if (uniqueDates.has(dateStr)) {
                 tempStreak++;
                 if (tempStreak > bestStreak) bestStreak = tempStreak;
             } else {
@@ -155,7 +165,25 @@ export default function HabitTracker() {
             }
         }
 
-        return { completionRate, currentStreak, bestStreak, totalCompleted, totalDays };
+        // Recalculate current streak working backwards from today
+        let currentStreak = 0;
+        if (isCurrentMonth) {
+            // Check backwards from today
+            for (let i = today.getDate(); i >= 1; i--) {
+                const dateStr = formatDate(currentDate, i);
+                if (uniqueDates.has(dateStr)) {
+                    currentStreak++;
+                } else {
+                    // If today is unchecked, streak is 0.
+                    break;
+                }
+            }
+        } else {
+            // For past months, current streak isn't really relevant, but let's say 0
+            currentStreak = 0;
+        }
+
+        return { completionRate, currentStreak, bestStreak, totalCompleted: uniqueDates.size, totalDays }; // Return raw totals for debugging if needed
     }, [completions, currentDate]);
 
     // Overall stats
@@ -163,6 +191,10 @@ export default function HabitTracker() {
         if (!currentDate || habits.length === 0) return null;
 
         const currentMonthStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+
+        // Check if we are in Jan 2026 (or earlier, which shouldn't happen)
+        const isStartOfTime = currentDate.getFullYear() === 2026 && currentDate.getMonth() === 0;
+
         const prevDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
         const prevMonthStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
 
@@ -176,6 +208,20 @@ export default function HabitTracker() {
         const totalPossible = habits.length * totalDays;
         const totalCompleted = currentCompletions.length;
         const overallRate = totalPossible > 0 ? Math.round((totalCompleted / totalPossible) * 100) : 0;
+
+        // If it's the start (Jan 2026), don't compare with previous month
+        if (isStartOfTime) {
+            return {
+                overallRate,
+                totalCompleted,
+                totalPossible,
+                habitsTracked: habits.length,
+                rateDiff: 0,
+                completedDiff: 0,
+                prevRate: 0,
+                isStart: true // Flag to hide comparison UI
+            };
+        }
 
         // Previous Month Stats
         const prevDaysInMonth = getDaysInMonth(prevDate);
@@ -196,7 +242,8 @@ export default function HabitTracker() {
             habitsTracked: habits.length,
             rateDiff,
             completedDiff,
-            prevRate
+            prevRate,
+            isStart: false
         };
     }, [habits, completions, currentDate]);
 
@@ -214,14 +261,14 @@ export default function HabitTracker() {
         if (!currentDate) return;
         const dateStr = formatDate(currentDate, day);
 
-        // Anti-cheat: Prevent modifying past dates or future dates
+        // Anti-cheat: 
+        // 1. Prevent anything before Jan 1, 2026
+        // 2. Prevent future dates
         const today = new Date();
         const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-        if (dateStr !== todayStr) {
-            // Optional: You could show a toast here saying "You can only update today's habits!"
-            return;
-        }
+        if (dateStr < '2026-01-01') return;
+        if (dateStr > todayStr) return;
 
         const existing = completions.find(
             (c) => c.habit_id === habitId && c.completed_date === dateStr
@@ -295,6 +342,10 @@ export default function HabitTracker() {
     // Navigate months
     const previousMonth = () => {
         if (!currentDate) return;
+        // Restrict going before Jan 2026
+        // If current is Jan 2026 (year 2026, month 0), do not go back
+        if (currentDate.getFullYear() === 2026 && currentDate.getMonth() === 0) return;
+
         setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
     };
 
@@ -306,6 +357,9 @@ export default function HabitTracker() {
     const monthName = currentDate?.toLocaleString('default', { month: 'long', year: 'numeric' }) || '';
     const daysInMonth = currentDate ? getDaysInMonth(currentDate) : 31;
     const firstDayOfMonth = currentDate ? getFirstDayOfMonth(currentDate) : 0;
+
+    // Check if we can go back
+    const canGoBack = currentDate ? !(currentDate.getFullYear() === 2026 && currentDate.getMonth() === 0) : true;
 
     // Handle keyboard shortcuts
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -350,8 +404,12 @@ export default function HabitTracker() {
                     <div className="flex items-center justify-between gap-4 flex-wrap">
                         <div className="flex items-center gap-2 sm:gap-3">
                             <button
-                                className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 bg-white rounded-xl shadow-sm border border-porcelain hover:border-china hover:shadow-md transition-all active:scale-95 text-midnight"
+                                className={`flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl shadow-sm border transition-all active:scale-95 text-midnight ${canGoBack
+                                    ? 'bg-white border-porcelain hover:border-china hover:shadow-md'
+                                    : 'bg-porcelain/50 border-transparent text-china/30 cursor-not-allowed'
+                                    }`}
                                 onClick={previousMonth}
+                                disabled={!canGoBack}
                                 aria-label="Previous month"
                             >
                                 <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -422,7 +480,7 @@ export default function HabitTracker() {
                             <div className="text-center p-3 bg-gradient-to-br from-royal/5 to-china/5 rounded-xl">
                                 <p className="text-2xl sm:text-3xl font-bold text-royal">{overallStats.overallRate}%</p>
                                 <p className="text-xs text-china mt-1">Completion Rate</p>
-                                {overallStats.rateDiff !== 0 && (
+                                {!overallStats.isStart && overallStats.rateDiff !== 0 && (
                                     <div className={`text-[10px] font-bold mt-1 ${overallStats.rateDiff > 0 ? 'text-green-500' : 'text-red-500'}`}>
                                         {overallStats.rateDiff > 0 ? '↑' : '↓'} {Math.abs(overallStats.rateDiff)}% vs last mo
                                     </div>
@@ -431,7 +489,7 @@ export default function HabitTracker() {
                             <div className="text-center p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl">
                                 <p className="text-2xl sm:text-3xl font-bold text-green-600">{overallStats.totalCompleted}</p>
                                 <p className="text-xs text-green-700 mt-1">Tasks Completed</p>
-                                {overallStats.completedDiff !== 0 && (
+                                {!overallStats.isStart && overallStats.completedDiff !== 0 && (
                                     <div className={`text-[10px] font-bold mt-1 ${overallStats.completedDiff > 0 ? 'text-green-600' : 'text-red-500'}`}>
                                         {overallStats.completedDiff > 0 ? '↑' : '↓'} {Math.abs(overallStats.completedDiff)} vs last mo
                                     </div>
