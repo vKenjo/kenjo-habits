@@ -208,6 +208,16 @@ export default function HabitTracker() {
     const toggleCompletion = async (habitId: string, day: number) => {
         if (!currentDate) return;
         const dateStr = formatDate(currentDate, day);
+
+        // Anti-cheat: Prevent modifying past dates or future dates
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+        if (dateStr !== todayStr) {
+            // Optional: You could show a toast here saying "You can only update today's habits!"
+            return;
+        }
+
         const existing = completions.find(
             (c) => c.habit_id === habitId && c.completed_date === dateStr
         );
@@ -475,7 +485,7 @@ export default function HabitTracker() {
                                                 <span className="text-sm font-medium text-midnight truncate block">
                                                     {habit.name}
                                                 </span>
-                                                <span className="text-xs text-china">{stats.completionRate}% • {stats.currentStreak}🔥</span>
+                                                <span className="text-xs text-china">{stats.completionRate}%</span>
                                             </div>
                                             <button
                                                 className="opacity-0 group-hover:opacity-100 flex-shrink-0 w-6 h-6 flex items-center justify-center text-china/60 hover:text-red-500 hover:bg-red-50 rounded-md transition-all"
