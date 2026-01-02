@@ -375,6 +375,18 @@ export default function HabitTracker() {
                             </div>
 
                             <button
+                                className={`flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-sm font-semibold transition-all border ${showStats
+                                    ? 'bg-royal/10 text-royal border-royal/20'
+                                    : 'bg-white text-china border-porcelain hover:border-royal/30 hover:text-midnight'}`}
+                                onClick={() => setShowStats(!showStats)}
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                                <span>Stats</span>
+                            </button>
+
+                            <button
                                 className="flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-royal to-china text-white rounded-xl text-sm font-semibold shadow-lg shadow-royal/25 hover:shadow-xl hover:shadow-royal/30 hover:-translate-y-0.5 transition-all active:scale-95"
                                 onClick={() => setIsModalOpen(true)}
                             >
@@ -387,6 +399,36 @@ export default function HabitTracker() {
                         </div>
                     </div>
                 </div>
+
+                {/* Stats Panel - Shown at Top */}
+                {overallStats && showStats && (
+                    <div className="mx-4 sm:mx-6 lg:mx-8 mb-6 bg-white/70 backdrop-blur-sm border border-china/10 rounded-2xl p-4 sm:p-5 shadow-sm animate-fade-in-down">
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="text-center p-3 bg-gradient-to-br from-royal/5 to-china/5 rounded-xl">
+                                <p className="text-2xl sm:text-3xl font-bold text-royal">{overallStats.overallRate}%</p>
+                                <p className="text-xs text-china mt-1">Completion Rate</p>
+                                {overallStats.rateDiff !== 0 && (
+                                    <div className={`text-[10px] font-bold mt-1 ${overallStats.rateDiff > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                        {overallStats.rateDiff > 0 ? '↑' : '↓'} {Math.abs(overallStats.rateDiff)}% vs last mo
+                                    </div>
+                                )}
+                            </div>
+                            <div className="text-center p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl">
+                                <p className="text-2xl sm:text-3xl font-bold text-green-600">{overallStats.totalCompleted}</p>
+                                <p className="text-xs text-green-700 mt-1">Tasks Completed</p>
+                                {overallStats.completedDiff !== 0 && (
+                                    <div className={`text-[10px] font-bold mt-1 ${overallStats.completedDiff > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                        {overallStats.completedDiff > 0 ? '↑' : '↓'} {Math.abs(overallStats.completedDiff)} vs last mo
+                                    </div>
+                                )}
+                            </div>
+                            <div className="text-center p-3 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl">
+                                <p className="text-2xl sm:text-3xl font-bold text-purple-600">{overallStats.habitsTracked}</p>
+                                <p className="text-xs text-purple-700 mt-1">Habits Tracked</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Main Content */}
                 {isLoading ? (
@@ -706,58 +748,7 @@ export default function HabitTracker() {
                 </div>
             )}
 
-            {/* Bottom Stats Section - Collapsible */}
-            {overallStats && habits.length > 0 && (
-                <div className="mt-6">
-                    <button
-                        onClick={() => setShowStats(!showStats)}
-                        className="group flex items-center justify-between w-full p-4 rounded-xl bg-gradient-to-r from-white/80 to-porcelain/50 border border-porcelain hover:border-royal/20 transition-all shadow-sm mb-3"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${showStats ? 'bg-royal/10 text-royal' : 'bg-porcelain text-china group-hover:bg-royal/5 group-hover:text-royal'}`}>
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                </svg>
-                            </div>
-                            <span className="text-base font-bold text-midnight tracking-tight group-hover:text-royal transition-colors">Monthly Statistics</span>
-                        </div>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform duration-300 ${showStats ? 'rotate-180 bg-royal/10 text-royal' : 'text-china/50 group-hover:bg-royal/5 group-hover:text-royal'}`}>
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </div>
-                    </button>
 
-                    {showStats && (
-                        <div className="bg-white/70 backdrop-blur-sm border border-china/10 rounded-2xl p-4 sm:p-5 shadow-sm animate-fade-in">
-                            <div className="grid grid-cols-3 gap-4">
-                                <div className="text-center p-3 bg-gradient-to-br from-royal/5 to-china/5 rounded-xl">
-                                    <p className="text-2xl sm:text-3xl font-bold text-royal">{overallStats.overallRate}%</p>
-                                    <p className="text-xs text-china mt-1">Completion Rate</p>
-                                    {overallStats.rateDiff !== 0 && (
-                                        <div className={`text-[10px] font-bold mt-1 ${overallStats.rateDiff > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                            {overallStats.rateDiff > 0 ? '↑' : '↓'} {Math.abs(overallStats.rateDiff)}% vs last mo
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="text-center p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl">
-                                    <p className="text-2xl sm:text-3xl font-bold text-green-600">{overallStats.totalCompleted}</p>
-                                    <p className="text-xs text-green-700 mt-1">Tasks Completed</p>
-                                    {overallStats.completedDiff !== 0 && (
-                                        <div className={`text-[10px] font-bold mt-1 ${overallStats.completedDiff > 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                            {overallStats.completedDiff > 0 ? '↑' : '↓'} {Math.abs(overallStats.completedDiff)} vs last mo
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="text-center p-3 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl">
-                                    <p className="text-2xl sm:text-3xl font-bold text-purple-600">{overallStats.habitsTracked}</p>
-                                    <p className="text-xs text-purple-700 mt-1">Habits Tracked</p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            )}
         </>
     );
 }
