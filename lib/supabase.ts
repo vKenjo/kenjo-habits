@@ -39,3 +39,12 @@ export interface ReadingRating {
     created_at: string;
     updated_at: string;
 }
+
+export interface MaximRating {
+    id: string;
+    user_id: string;
+    maxim_number: number;
+    rating: boolean;
+    created_at: string;
+    updated_at: string;
+}

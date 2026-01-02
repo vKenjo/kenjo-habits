@@ -41,7 +41,8 @@ export async function GET(request: NextRequest) {
         const dayMap: Record<string, { date: string; hasJournal: boolean; readings: { bookId: string; rating: number }[] }> = {};
 
         // Process Ratings
-        ratingsRes.data?.forEach((r: any) => {
+        const ratingsData = ratingsRes.data as { reading_date: string; book_id: string; rating: number }[] | null;
+        ratingsData?.forEach((r) => {
             const d = r.reading_date;
             if (!dayMap[d]) {
                 dayMap[d] = { date: d, hasJournal: false, readings: [] };
@@ -50,7 +51,8 @@ export async function GET(request: NextRequest) {
         });
 
         // Process Journals
-        journalRes.data?.forEach((j: any) => {
+        const journalData = journalRes.data as { date: string }[] | null;
+        journalData?.forEach((j) => {
             const d = j.date;
             if (!dayMap[d]) {
                 dayMap[d] = { date: d, hasJournal: false, readings: [] };

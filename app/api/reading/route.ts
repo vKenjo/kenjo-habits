@@ -306,7 +306,11 @@ function cleanHtmlContent(html: string): string {
         if (allowedTags.includes(tag.toLowerCase())) {
             return `<${tag}>`;
         }
-        if (tag.toLowerCase() === 'span' || tag.toLowerCase() === 'div') {
+        // Convert div to p to preserve block structure
+        if (tag.toLowerCase() === 'div') {
+            return '<p>';
+        }
+        if (tag.toLowerCase() === 'span') {
             return '';
         }
         return '';
@@ -317,6 +321,9 @@ function cleanHtmlContent(html: string): string {
         const allowedTags = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'em', 'strong', 'i', 'b', 'blockquote', 'ul', 'ol', 'li'];
         if (allowedTags.includes(tag.toLowerCase())) {
             return `</${tag}>`;
+        }
+        if (tag.toLowerCase() === 'div') {
+            return '</p>';
         }
         return '';
     });
@@ -360,9 +367,20 @@ function cleanHtmlContent(html: string): string {
     }
 
     // Format author attributions with proper spacing (wrap em-dashes with proper styling)
-    // Transform "—Author Name" into styled attribution
     clean = clean.replace(/<p>\s*—([^<]+)<\/p>/g, '<p class="author-attribution">—$1</p>');
     clean = clean.replace(/<p>—/g, '<p class="author-attribution">—');
+
+    // Wrap "ACTION POINT:" sections
+    // Matches "ACTION POINT:" at start of paragraph (or inside standard tags)
+    clean = clean.replace(/<p>\s*(?:ACTION POINT|Action Point|ACTION STEP|Action Step):\s*(.*?)<\/p>/gi, '<div class="action-point"><strong>Action Point:</strong> $1</div>');
+
+    // Also handle case where Action Point might be in an H tag or just strong text
+    clean = clean.replace(/<(?:p|div)[^>]*>\s*<strong>\s*(?:ACTION POINT|Action Point):\s*<\/strong>\s*(.*?)<\/(?:p|div)>/gi, '<div class="action-point"><strong>Action Point:</strong> $1</div>');
+
+    // Wrap likely source citations at the bottom (often year or book titles)
+    // Heuristic: Last few paragraphs, short text, often contains dates or "The ..."
+    // This is tricky to do perfectly with regex without affecting content, so we'll be conservative.
+    // For now, let's target specific known patterns if possible, or just the very last line if it looks like a source.
 
     return clean;
 }

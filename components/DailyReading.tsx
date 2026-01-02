@@ -35,7 +35,7 @@ import HistoryModal from './HistoryModal';
 export default function DailyReading() {
     const [dayOfYear, setDayOfYear] = useState<number>(1);
     const [displayDateString, setDisplayDateString] = useState<string>('');
-    const [isExpanded, setIsExpanded] = useState(true);
+    const [isExpanded] = useState(true);
     const [showHistory, setShowHistory] = useState(false);
     const [isLoaded, setIsLoaded] = useState(false);
     const [selectedBook, setSelectedBook] = useState<DailyBook | null>(null);
