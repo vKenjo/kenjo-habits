@@ -76,85 +76,65 @@ export default function DailyQuote() {
 
     // Fetch rating when currentMaxim changes
     useEffect(() => {
-        if (!currentMaxim || !isSupabaseConfigured) return;
+        if (!currentMaxim) return;
 
         const fetchRating = async () => {
             setIsLoadingRating(true);
-            const { data: { user } } = await supabase.auth.getUser();
-
-            if (!user) {
-                setIsLoadingRating(false);
-                return;
-            }
-
-            const { data, error } = await supabase
-                .from('maxim_ratings')
-                .select('rating')
-                .eq('user_id', user.id)
-                .eq('maxim_number', currentMaxim.number)
-                .single();
-
-            if (error) {
-                if (error.code !== 'PGRST116') { // PGRST116 is code for "no rows returned"
-                    console.error('Error fetching rating:', error);
+            try {
+                const response = await fetch(`/api/maxims/rating?maximNumber=${currentMaxim.number}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setRating(data.rating);
+                } else {
+                    setRating(null);
                 }
+            } catch (error) {
+                console.error('Error fetching rating:', error);
                 setRating(null);
-            } else {
-                setRating(data?.rating ?? null);
+            } finally {
+                setIsLoadingRating(false);
             }
-            setIsLoadingRating(false);
         };
 
         fetchRating();
     }, [currentMaxim]);
 
     const handleRating = async (newRating: boolean) => {
-        if (!currentMaxim || !isSupabaseConfigured) return;
+        if (!currentMaxim) return;
 
         // Optimistic update
         const previousRating = rating;
 
         // If clicking the same rating, toggle it off (remove rating)
+        // If clicking different, set to new
+        let targetRating: boolean | null = newRating;
         if (rating === newRating) {
-            setRating(null);
-        } else {
-            setRating(newRating);
+            targetRating = null;
         }
 
-        const { data: { user } } = await supabase.auth.getUser();
+        setRating(targetRating);
+        setIsLoadingRating(true); // Ideally shouldn't block UI but prevents double submission
 
-        if (!user) {
-            // Revert optimistic update if no user
-            setRating(previousRating);
-            return;
-        }
+        try {
+            const response = await fetch('/api/maxims/rating', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    maximNumber: currentMaxim.number,
+                    rating: targetRating
+                })
+            });
 
-        if (rating === newRating) {
-            // Delete rating logic
-            const { error } = await supabase
-                .from('maxim_ratings')
-                .delete()
-                .eq('user_id', user.id)
-                .eq('maxim_number', currentMaxim.number);
-
-            if (error) {
-                console.error('Error removing rating:', error);
-                setRating(previousRating);
+            if (!response.ok) {
+                throw new Error('Failed to save rating');
             }
-        } else {
-            // Upsert rating logic
-            const { error } = await supabase
-                .from('maxim_ratings')
-                .upsert({
-                    user_id: user.id,
-                    maxim_number: currentMaxim.number,
-                    rating: newRating,
-                }, { onConflict: 'user_id, maxim_number' });
 
-            if (error) {
-                console.error('Error saving rating:', error);
-                setRating(previousRating);
-            }
+            // If needed, we can update state from response, but optimistic is usually fine
+        } catch (error) {
+            console.error('Error saving rating:', error);
+            setRating(previousRating); // Revert
+        } finally {
+            setIsLoadingRating(false);
         }
     };
 
@@ -206,8 +186,8 @@ export default function DailyQuote() {
                         onClick={() => handleRating(true)}
                         disabled={isLoadingRating}
                         className={`p-1.5 rounded-lg transition-all ${rating === true
-                                ? 'bg-green-100 text-green-600'
-                                : 'text-china/40 hover:text-green-500 hover:bg-green-50'
+                            ? 'bg-green-100 text-green-600'
+                            : 'text-china/40 hover:text-green-500 hover:bg-green-50'
                             }`}
                         title="Like this quote"
                     >
@@ -219,8 +199,8 @@ export default function DailyQuote() {
                         onClick={() => handleRating(false)}
                         disabled={isLoadingRating}
                         className={`p-1.5 rounded-lg transition-all ${rating === false
-                                ? 'bg-red-100 text-red-600'
-                                : 'text-china/40 hover:text-red-500 hover:bg-red-50'
+                            ? 'bg-red-100 text-red-600'
+                            : 'text-china/40 hover:text-red-500 hover:bg-red-50'
                             }`}
                         title="Dislike this quote"
                     >
