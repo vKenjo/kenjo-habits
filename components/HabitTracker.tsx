@@ -45,10 +45,10 @@ export default function HabitTracker() {
         return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
     };
 
-    // Format date for database
+    // Format date for database (Local YYYY-MM-DD)
     const formatDate = (date: Date, day: number) => {
         const d = new Date(date.getFullYear(), date.getMonth(), day);
-        return d.toISOString().split('T')[0];
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     };
 
     // Check if a date is today
@@ -80,14 +80,19 @@ export default function HabitTracker() {
     // Fetch completions for current month
     const fetchCompletions = useCallback(async () => {
         if (!isSupabaseConfigured || !currentDate) return;
-        const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
-        const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+
+        // Get start and end of view range (with buffer)
+        const start = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+        const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+
+        const startStr = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
+        const endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
 
         const { data, error } = await supabase
             .from('habit_completions')
             .select('*')
-            .gte('completed_date', startDate.toISOString().split('T')[0])
-            .lte('completed_date', endDate.toISOString().split('T')[0]);
+            .gte('completed_date', startStr)
+            .lte('completed_date', endStr);
 
         if (error) {
             console.error('Error fetching completions:', error);
