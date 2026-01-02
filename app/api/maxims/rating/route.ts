@@ -85,32 +85,34 @@ export async function POST(request: NextRequest) {
             if (error) throw error;
             return NextResponse.json({ success: true, rating: null });
         } else {
-            const { error } = await supabase
+            // Explicitly handle upsert for NULL user_id to avoid unique index conflict issues with standard upsert
+            // First, look for existing record
+            const { data: existing } = await supabase
                 .from('maxim_ratings')
-                .upsert({
-                    maxim_number: maximNumber,
-                    rating: rating,
-                    user_id: null, // Explicitly set to null for the system default
-                    updated_at: new Date().toISOString()
-                }, {
-                    onConflict: 'maxim_number,user_id' // Need to ensure conflict targets match unique constraint/index
-                    // Postgres unique index with nulls might be tricky with ON CONFLICT.
-                    // However, we added a unique index `maxim_ratings_null_user_idx`.
-                    // Supabase js `upsert` usually handles standard unique constraints.
-                    // For partial indexes, we might need to be careful.
-                    // Simplest for single row: check if exists, then update or insert.
-                });
+                .select('id')
+                .eq('maxim_number', maximNumber)
+                .is('user_id', null)
+                .maybeSingle();
 
-            // Note: onConflict might fail if it doesn't map to a unique constraint name or columns inference.
-            // With `user_id` being nullable, `unique(user_id, maxim_number)` might not trigger for nulls depending on DB config.
-            // We created `maxim_ratings_null_user_idx`.
-            // Explicitly performing select-then-upsert or relying on the library behavior.
-            // Let's try standard upsert. If it fails due to duplicate key (which it shouldn't if we manage it right), we catch it.
-
-            if (error) {
-                // Fallback: try update, then insert if not found? 
-                // Or just let it throw if it's a real error.
-                throw error;
+            if (existing) {
+                const { error } = await supabase
+                    .from('maxim_ratings')
+                    .update({
+                        rating: rating,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', existing.id);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase
+                    .from('maxim_ratings')
+                    .insert({
+                        maxim_number: maximNumber,
+                        rating: rating,
+                        user_id: null,
+                        updated_at: new Date().toISOString()
+                    });
+                if (error) throw error;
             }
 
             return NextResponse.json({ success: true, rating });

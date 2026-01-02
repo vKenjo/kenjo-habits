@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { maxims, Maxim } from '@/lib/maxims';
 
-const MAX_REFRESHES_PER_DAY = 3;
+const MAX_REFRESHES_PER_DAY = 1;
 const STORAGE_KEY = 'kenjo_habits_quote';
 
 
@@ -13,8 +13,7 @@ interface QuoteState {
     date: string;
 }
 
-// Add Supabase import
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+
 
 export default function DailyQuote() {
     const [currentMaxim, setCurrentMaxim] = useState<Maxim | null>(null);
@@ -178,7 +177,11 @@ export default function DailyQuote() {
                         &quot;{currentMaxim.text}&quot;
                     </p>
                     <p className="text-xs text-china mt-2">
-                        — La Rochefoucauld, <span className="font-medium">Maxim #{currentMaxim.number}</span>
+                        — La Rochefoucauld, <span className="font-medium">
+                            {currentMaxim.category === 'Maxim'
+                                ? `Maxim #${currentMaxim.displayNumber}`
+                                : `${currentMaxim.category} ${currentMaxim.displayNumber}`}
+                        </span>
                     </p>
                 </div>
                 <div className="flex flex-col gap-1 items-center justify-center pl-2 border-l border-porcelain/50">

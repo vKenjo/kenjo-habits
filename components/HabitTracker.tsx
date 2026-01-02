@@ -14,6 +14,7 @@ interface HabitStats {
 export default function HabitTracker() {
     const [habits, setHabits] = useState<Habit[]>([]);
     const [completions, setCompletions] = useState<HabitCompletion[]>([]);
+    const [maximRatings, setMaximRatings] = useState<{ rating: boolean; updated_at: string }[]>([]);
     const [currentDate, setCurrentDate] = useState<Date | null>(null);
     const [isLoading, setIsLoading] = useState(isSupabaseConfigured);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -101,16 +102,42 @@ export default function HabitTracker() {
         setCompletions(data || []);
     }, [currentDate]);
 
+    // Fetch maxim ratings for current month
+    const fetchMaximRatings = useCallback(async () => {
+        if (!isSupabaseConfigured || !currentDate) return;
+
+        const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+
+        const startStr = start.toISOString();
+        const endStr = end.toISOString();
+
+        // We only care about positive ratings for the stats
+        const { data, error } = await supabase
+            .from('maxim_ratings')
+            .select('rating, updated_at')
+            .gte('updated_at', startStr)
+            .lte('updated_at', endStr)
+            .eq('rating', true)
+            .is('user_id', null);
+
+        if (error) {
+            console.error('Error fetching maxim ratings:', error);
+            return;
+        }
+        setMaximRatings(data || []);
+    }, [currentDate]);
+
     // Load data
     useEffect(() => {
         if (!isSupabaseConfigured || !currentDate) return;
         const loadData = async () => {
             setIsLoading(true);
-            await Promise.all([fetchHabits(), fetchCompletions()]);
+            await Promise.all([fetchHabits(), fetchCompletions(), fetchMaximRatings()]);
             setIsLoading(false);
         };
         loadData();
-    }, [fetchHabits, fetchCompletions, currentDate]);
+    }, [fetchHabits, fetchCompletions, fetchMaximRatings, currentDate]);
 
     // Calculate stats for a habit
     const calculateStats = useCallback((habitId: string): HabitStats => {
@@ -476,7 +503,7 @@ export default function HabitTracker() {
                 {/* Stats Panel - Shown at Top */}
                 {overallStats && showStats && (
                     <div className="mx-4 sm:mx-6 lg:mx-8 mb-6 bg-white/70 backdrop-blur-sm border border-china/10 rounded-2xl p-4 sm:p-5 shadow-sm animate-fade-in-down">
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                             <div className="text-center p-3 bg-gradient-to-br from-royal/5 to-china/5 rounded-xl">
                                 <p className="text-2xl sm:text-3xl font-bold text-royal">{overallStats.overallRate}%</p>
                                 <p className="text-xs text-china mt-1">Completion Rate</p>
@@ -498,6 +525,10 @@ export default function HabitTracker() {
                             <div className="text-center p-3 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl">
                                 <p className="text-2xl sm:text-3xl font-bold text-purple-600">{overallStats.habitsTracked}</p>
                                 <p className="text-xs text-purple-700 mt-1">Habits Tracked</p>
+                            </div>
+                            <div className="text-center p-3 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl">
+                                <p className="text-2xl sm:text-3xl font-bold text-amber-600">{maximRatings.length}</p>
+                                <p className="text-xs text-amber-700 mt-1">Quotes Liked</p>
                             </div>
                         </div>
                     </div>
