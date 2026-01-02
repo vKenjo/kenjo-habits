@@ -375,7 +375,7 @@ export default function HabitTracker() {
                             </div>
 
                             <button
-                                className={`flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-sm font-semibold transition-all border ${showStats
+                                className={`flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all border ${showStats
                                     ? 'bg-royal/10 text-royal border-royal/20'
                                     : 'bg-white text-china border-porcelain hover:border-royal/30 hover:text-midnight'}`}
                                 onClick={() => setShowStats(!showStats)}
@@ -403,7 +403,7 @@ export default function HabitTracker() {
                 {/* Stats Panel - Shown at Top */}
                 {overallStats && showStats && (
                     <div className="mx-4 sm:mx-6 lg:mx-8 mb-6 bg-white/70 backdrop-blur-sm border border-china/10 rounded-2xl p-4 sm:p-5 shadow-sm animate-fade-in-down">
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div className="text-center p-3 bg-gradient-to-br from-royal/5 to-china/5 rounded-xl">
                                 <p className="text-2xl sm:text-3xl font-bold text-royal">{overallStats.overallRate}%</p>
                                 <p className="text-xs text-china mt-1">Completion Rate</p>
