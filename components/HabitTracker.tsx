@@ -80,7 +80,7 @@ export default function HabitTracker() {
     // Fetch completions for current month
     const fetchCompletions = useCallback(async () => {
         if (!isSupabaseConfigured || !currentDate) return;
-        const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
         const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
         const { data, error } = await supabase
@@ -157,20 +157,41 @@ export default function HabitTracker() {
     const overallStats = useMemo(() => {
         if (!currentDate || habits.length === 0) return null;
 
+        const currentMonthStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+        const prevDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+        const prevMonthStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+
+        // Current Month Stats
         const today = new Date();
         const daysInMonth = getDaysInMonth(currentDate);
         const isCurrentMonth = today.getMonth() === currentDate.getMonth() && today.getFullYear() === currentDate.getFullYear();
         const totalDays = isCurrentMonth ? today.getDate() : daysInMonth;
 
+        const currentCompletions = completions.filter(c => c.completed_date.startsWith(currentMonthStr));
         const totalPossible = habits.length * totalDays;
-        const totalCompleted = completions.length;
+        const totalCompleted = currentCompletions.length;
         const overallRate = totalPossible > 0 ? Math.round((totalCompleted / totalPossible) * 100) : 0;
+
+        // Previous Month Stats
+        const prevDaysInMonth = getDaysInMonth(prevDate);
+        const prevTotalDays = prevDaysInMonth; // Always full month for history
+
+        const prevCompletions = completions.filter(c => c.completed_date.startsWith(prevMonthStr));
+        const prevTotalPossible = habits.length * prevTotalDays;
+        const prevTotalCompleted = prevCompletions.length;
+        const prevRate = prevTotalPossible > 0 ? Math.round((prevTotalCompleted / prevTotalPossible) * 100) : 0;
+
+        const rateDiff = overallRate - prevRate;
+        const completedDiff = totalCompleted - prevTotalCompleted;
 
         return {
             overallRate,
             totalCompleted,
             totalPossible,
-            habitsTracked: habits.length
+            habitsTracked: habits.length,
+            rateDiff,
+            completedDiff,
+            prevRate
         };
     }, [habits, completions, currentDate]);
 
@@ -690,19 +711,21 @@ export default function HabitTracker() {
                 <div className="mt-6">
                     <button
                         onClick={() => setShowStats(!showStats)}
-                        className="group flex items-center gap-2 text-sm font-semibold text-china hover:text-royal transition-all mb-3 ml-1"
+                        className="group flex items-center justify-between w-full p-4 rounded-xl bg-gradient-to-r from-white/80 to-porcelain/50 border border-porcelain hover:border-royal/20 transition-all shadow-sm mb-3"
                     >
-                        <div className={`w-5 h-5 rounded-full bg-porcelain group-hover:bg-royal/10 flex items-center justify-center transition-colors ${showStats ? 'bg-royal/10 text-royal' : ''}`}>
-                            <svg
-                                className={`w-3 h-3 transition-transform duration-300 ${showStats ? 'rotate-180' : ''}`}
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                        <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${showStats ? 'bg-royal/10 text-royal' : 'bg-porcelain text-china group-hover:bg-royal/5 group-hover:text-royal'}`}>
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                            </div>
+                            <span className="text-base font-bold text-midnight tracking-tight group-hover:text-royal transition-colors">Monthly Statistics</span>
+                        </div>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform duration-300 ${showStats ? 'rotate-180 bg-royal/10 text-royal' : 'text-china/50 group-hover:bg-royal/5 group-hover:text-royal'}`}>
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                             </svg>
                         </div>
-                        <span>{showStats ? 'Hide' : 'Show'} Monthly Statistics</span>
                     </button>
 
                     {showStats && (
@@ -711,10 +734,20 @@ export default function HabitTracker() {
                                 <div className="text-center p-3 bg-gradient-to-br from-royal/5 to-china/5 rounded-xl">
                                     <p className="text-2xl sm:text-3xl font-bold text-royal">{overallStats.overallRate}%</p>
                                     <p className="text-xs text-china mt-1">Completion Rate</p>
+                                    {overallStats.rateDiff !== 0 && (
+                                        <div className={`text-[10px] font-bold mt-1 ${overallStats.rateDiff > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                            {overallStats.rateDiff > 0 ? '↑' : '↓'} {Math.abs(overallStats.rateDiff)}% vs last mo
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="text-center p-3 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl">
                                     <p className="text-2xl sm:text-3xl font-bold text-green-600">{overallStats.totalCompleted}</p>
                                     <p className="text-xs text-green-700 mt-1">Tasks Completed</p>
+                                    {overallStats.completedDiff !== 0 && (
+                                        <div className={`text-[10px] font-bold mt-1 ${overallStats.completedDiff > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                            {overallStats.completedDiff > 0 ? '↑' : '↓'} {Math.abs(overallStats.completedDiff)} vs last mo
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="text-center p-3 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl">
                                     <p className="text-2xl sm:text-3xl font-bold text-purple-600">{overallStats.habitsTracked}</p>

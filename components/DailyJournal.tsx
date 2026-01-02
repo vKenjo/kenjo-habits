@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 
-const STORAGE_KEY_PREFIX = 'kenjo_habits_journal_';
+
 
 export default function DailyJournal() {
     const [content, setContent] = useState('');
@@ -60,15 +60,15 @@ export default function DailyJournal() {
     }, [content]);
 
     return (
-        <div className="space-y-3">
+        <div className="bg-transparent p-4 space-y-3">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-royal/5 flex items-center justify-center text-royal">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div className="w-10 h-10 rounded-xl bg-royal/5 flex items-center justify-center text-royal shrink-0">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
                     </div>
-                    <h2 className="text-sm font-semibold text-midnight">Daily Journal</h2>
+                    <span className="text-base font-bold text-midnight tracking-tight">Daily Journal</span>
                 </div>
                 {isSaving && (
                     <span className="text-xs text-emerald-500 font-medium animate-fade-in">Saved</span>

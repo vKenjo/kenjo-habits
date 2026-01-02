@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 // Calculate streak from an array of dates (descending order)
 function calculateStreak(dates: string[]): number {
     if (dates.length === 0) return 0;
@@ -113,6 +115,17 @@ export async function POST(request: NextRequest) {
 
         if (rating < 1 || rating > 5) {
             return NextResponse.json({ error: 'Rating must be between 1 and 5' }, { status: 400 });
+        }
+
+        // Guard Rail: Prevent future dates
+        const submissionDate = new Date(date);
+        const today = new Date();
+        // Reset time part to compare dates only
+        submissionDate.setHours(0, 0, 0, 0);
+        today.setHours(0, 0, 0, 0);
+
+        if (submissionDate > today) {
+            return NextResponse.json({ error: 'Cannot rate for future dates' }, { status: 400 });
         }
 
         // Upsert the rating

@@ -1,17 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { dailyBooks, getDayOfYear, formatDateForReading, DailyBook } from '@/lib/dailyBooks';
 
-interface ReadingContent {
-    bookId: string;
-    title: string;
-    author: string;
-    day: number;
-    content: string;
-    monthIntro?: string;
-    monthTheme?: string;
-}
+import { dailyBooks, getDayOfYear, formatDateForReading, DailyBook } from '@/lib/dailyBooks';
+import ReadingModal, { ReadingContent } from './ReadingModal';
 
 interface StreakData {
     rating: number | null;
@@ -19,16 +11,18 @@ interface StreakData {
     totalDays: number;
 }
 
-// Emoji ratings for the 1-5 scale
-const RATING_EMOJIS = ['😔', '😐', '🙂', '😊', '🤩'];
-const RATING_LABELS = ['Not great', 'Okay', 'Good', 'Great', 'Amazing'];
-
 // Helper to get month name, day, and formatted date from day of year
 function getDateFromDayOfYear(dayOfYear: number): { monthName: string; dayOfMonth: number; dateString: string } {
     const date = new Date(new Date().getFullYear(), 0, dayOfYear);
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
         'July', 'August', 'September', 'October', 'November', 'December'];
-    const dateString = date.toISOString().split('T')[0];
+
+    // Use local date parts to ensure dateString matches the user's local day
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateString = `${year}-${month}-${day}`;
+
     return {
         monthName: monthNames[date.getMonth()],
         dayOfMonth: date.getDate(),
@@ -58,7 +52,7 @@ export default function DailyReading() {
 
         await Promise.all(dailyBooks.map(async (book) => {
             try {
-                const response = await fetch(`/api/ratings?bookId=${book.id}&date=${dateString}&streak=true`);
+                const response = await fetch(`/api/ratings?bookId=${book.id}&date=${dateString}&streak=true`, { cache: 'no-store' });
                 if (response.ok) {
                     const data = await response.json();
                     newStreakData[book.id] = {
@@ -298,189 +292,4 @@ function BookCard({
     );
 }
 
-function ReadingModal({
-    book,
-    dayOfYear,
-    dateLabel,
-    content,
-    isLoading,
-    error,
-    onClose,
-    currentRating,
-    streak,
-    onRate,
-    isSavingRating
-}: {
-    book: DailyBook;
-    dayOfYear: number;
-    dateLabel: string;
-    content: ReadingContent | null;
-    isLoading: boolean;
-    error: string | null;
-    onClose: () => void;
-    currentRating: number | null;
-    streak: number;
-    onRate: (rating: number) => void;
-    isSavingRating: boolean;
-}) {
-    const [showMonthOverview, setShowMonthOverview] = useState(false);
 
-    const date = new Date(new Date().getFullYear(), 0, dayOfYear);
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'];
-    const monthName = monthNames[date.getMonth()];
-
-    useEffect(() => {
-        const handleEscape = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
-        };
-        window.addEventListener('keydown', handleEscape);
-        return () => window.removeEventListener('keydown', handleEscape);
-    }, [onClose]);
-
-    useEffect(() => {
-        setShowMonthOverview(false);
-    }, [content]);
-
-    const hasMonthIntro = content?.monthIntro && book.id === 'daily-laws';
-
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div
-                className="absolute inset-0 bg-midnight/50 backdrop-blur-sm animate-fade-in"
-                onClick={onClose}
-            />
-
-            <div className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden animate-slide-up">
-                {/* Header */}
-                <div className={`sticky top-0 bg-gradient-to-br ${book.color} px-5 py-4 border-b border-china/10`}>
-                    <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                            <span className="text-3xl" role="img" aria-label={book.title}>
-                                {book.icon}
-                            </span>
-                            <div>
-                                <h2 className="text-lg font-bold text-midnight">{book.title}</h2>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                    <p className="text-sm text-china">{book.author} · {dateLabel}</p>
-                                    {streak > 0 && (
-                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-semibold bg-gradient-to-r from-orange-400 to-amber-400 text-white streak-badge">
-                                            🔥 {streak} day{streak !== 1 ? 's' : ''}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                        <button
-                            onClick={onClose}
-                            className="p-2 rounded-lg hover:bg-white/50 transition-colors"
-                            aria-label="Close"
-                        >
-                            <svg className="w-5 h-5 text-china" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-
-                {/* Content */}
-                <div className="p-5 sm:p-6 overflow-y-auto max-h-[calc(85vh-80px)]">
-                    {hasMonthIntro && !isLoading && (
-                        <div className="mb-5 flex gap-2 p-1 bg-porcelain/50 rounded-xl w-fit">
-                            <button
-                                onClick={() => setShowMonthOverview(false)}
-                                className={`px-4 py-2 text-xs font-medium rounded-lg transition-all ${!showMonthOverview
-                                    ? 'bg-white text-midnight shadow-sm'
-                                    : 'text-china hover:text-midnight'
-                                    }`}
-                            >
-                                📖 Today&apos;s Reading
-                            </button>
-                            <button
-                                onClick={() => setShowMonthOverview(true)}
-                                className={`px-4 py-2 text-xs font-medium rounded-lg transition-all ${showMonthOverview
-                                    ? 'bg-white text-midnight shadow-sm'
-                                    : 'text-china hover:text-midnight'
-                                    }`}
-                            >
-                                📚 {monthName} Overview
-                            </button>
-                        </div>
-                    )}
-
-                    {isLoading && (
-                        <div className="flex flex-col items-center justify-center py-16">
-                            <div className="w-10 h-10 border-3 border-royal/30 border-t-royal rounded-full animate-spin" />
-                            <p className="mt-4 text-sm text-china">Loading today&apos;s reading...</p>
-                        </div>
-                    )}
-
-                    {error && (
-                        <div className="text-center py-16">
-                            <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
-                                <svg className="w-7 h-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                </svg>
-                            </div>
-                            <p className="text-sm text-china">{error}</p>
-                        </div>
-                    )}
-
-                    {content && !isLoading && !error && (
-                        <>
-                            <div
-                                className="reading-content prose prose-sm max-w-none prose-headings:text-midnight prose-headings:font-semibold prose-headings:mt-6 prose-headings:mb-3 prose-p:text-midnight/85 prose-p:leading-relaxed prose-p:mb-4 prose-blockquote:border-l-4 prose-blockquote:border-royal/30 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-china prose-strong:text-royal prose-strong:font-semibold"
-                                dangerouslySetInnerHTML={{
-                                    __html: showMonthOverview && content.monthIntro
-                                        ? content.monthIntro
-                                        : content.content
-                                }}
-                            />
-
-                            {/* Rating Section */}
-                            <div className="mt-10 pt-6 border-t-2 border-dashed border-china/20 rounded-xl">
-                                <div className="text-center mb-4">
-                                    <p className="text-sm font-semibold text-midnight">
-                                        How did this reading resonate with you?
-                                    </p>
-                                    {isSavingRating && (
-                                        <p className="text-xs text-china mt-1 animate-pulse">Saving...</p>
-                                    )}
-                                </div>
-                                <div className="flex items-center justify-center gap-3">
-                                    {RATING_EMOJIS.map((emoji, index) => {
-                                        const rating = index + 1;
-                                        const isSelected = currentRating === rating;
-                                        return (
-                                            <button
-                                                key={rating}
-                                                onClick={() => onRate(rating)}
-                                                disabled={isSavingRating}
-                                                className={`group relative p-3 rounded-xl transition-all ${isSelected
-                                                    ? 'bg-gradient-to-br from-royal/15 to-china/10 ring-2 ring-royal/40 scale-110'
-                                                    : 'hover:bg-porcelain hover:scale-105'
-                                                    } ${isSavingRating ? 'opacity-50' : ''}`}
-                                                title={RATING_LABELS[index]}
-                                            >
-                                                <span className={`text-3xl block transition-transform ${isSelected ? 'scale-110' : 'group-hover:scale-110'}`}>
-                                                    {emoji}
-                                                </span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                                {currentRating && (
-                                    <p className="mt-3 text-xs text-china text-center font-medium">
-                                        You rated this: <span className="text-royal">{RATING_LABELS[currentRating - 1]}</span>
-                                    </p>
-                                )}
-                            </div>
-
-                            <div className="h-8" />
-                        </>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-}
