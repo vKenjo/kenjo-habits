@@ -767,48 +767,68 @@ export default function HabitTracker() {
                 )}
             </div>
 
-            {/* Add Habit Modal */}
+            {/* Full Screen Add Habit Modal */}
             {isModalOpen && (
                 <div
-                    className="fixed inset-0 bg-midnight/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in"
+                    className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/95 backdrop-blur-xl animate-fade-in"
                     onClick={() => setIsModalOpen(false)}
                 >
+                    {/* Close Button */}
+                    <button
+                        className="absolute top-6 right-6 p-2 text-china/50 hover:text-midnight transition-colors"
+                        onClick={() => setIsModalOpen(false)}
+                    >
+                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+
                     <div
-                        className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-md shadow-2xl animate-slide-up"
+                        className="w-full max-w-4xl px-6 text-center"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="w-14 h-14 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-dawn to-sky flex items-center justify-center">
-                            <svg className="w-7 h-7 text-royal" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <div className="mb-8 inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-dawn to-sky shadow-lg shadow-royal/10">
+                            <svg className="w-10 h-10 text-royal" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                             </svg>
                         </div>
-                        <h3 className="text-xl sm:text-2xl font-bold text-midnight text-center mb-2">Add New Habit</h3>
-                        <p className="text-china text-center text-sm mb-6">What would you like to track daily?</p>
-                        <input
-                            type="text"
-                            className="w-full px-4 py-3.5 border-2 border-porcelain rounded-xl text-base text-midnight bg-porcelain/30 focus:outline-none focus:border-royal focus:bg-white transition-all placeholder:text-china/50"
-                            placeholder="e.g., Exercise, Read, Meditate..."
-                            value={newHabitName}
-                            onChange={(e) => setNewHabitName(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            autoFocus
-                        />
-                        <div className="flex gap-3 mt-6">
+
+                        <h3 className="text-4xl md:text-5xl font-bold text-midnight mb-4 tracking-tight">New Habit</h3>
+                        <p className="text-xl text-china mb-12 font-medium">What positive change do you want to make?</p>
+
+                        <div className="relative max-w-2xl mx-auto">
+                            <input
+                                type="text"
+                                className="w-full px-0 py-4 text-center text-3xl md:text-4xl font-bold text-midnight bg-transparent border-b-2 border-porcelain focus:border-royal focus:outline-none placeholder:text-china/20 transition-all"
+                                placeholder="e.g., Early Run"
+                                value={newHabitName}
+                                onChange={(e) => setNewHabitName(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                autoFocus
+                            />
+                            <div className="mt-8 flex items-center justify-center gap-4 opacity-60">
+                                <span className="text-sm font-medium text-china flex items-center gap-2">
+                                    <kbd className="px-2 py-1 bg-porcelain rounded-lg text-xs">Enter</kbd> to save
+                                </span>
+                                <span className="text-china/30 text-sm">|</span>
+                                <span className="text-sm font-medium text-china flex items-center gap-2">
+                                    <kbd className="px-2 py-1 bg-porcelain rounded-lg text-xs">Esc</kbd> to cancel
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="mt-12 flex justify-center gap-4">
                             <button
-                                className="flex-1 px-4 py-3.5 bg-porcelain text-midnight rounded-xl text-sm font-semibold hover:bg-dawn transition-colors active:scale-95"
-                                onClick={() => {
-                                    setIsModalOpen(false);
-                                    setNewHabitName('');
-                                }}
+                                className="px-8 py-4 bg-porcelain text-midnight rounded-2xl text-lg font-semibold hover:bg-dawn transition-all active:scale-95"
+                                onClick={() => setIsModalOpen(false)}
                             >
                                 Cancel
                             </button>
                             <button
-                                className="flex-1 px-4 py-3.5 bg-gradient-to-r from-royal to-china text-white rounded-xl text-sm font-semibold shadow-lg shadow-royal/25 hover:shadow-xl transition-all active:scale-95 disabled:opacity-50"
+                                className="px-8 py-4 bg-gradient-to-r from-royal to-china text-white rounded-2xl text-lg font-semibold shadow-xl shadow-royal/20 hover:shadow-2xl hover:shadow-royal/30 hover:-translate-y-1 transition-all active:scale-95 w-48"
                                 onClick={addHabit}
-                                disabled={!newHabitName.trim()}
                             >
-                                Add Habit
+                                Start Tracking
                             </button>
                         </div>
                     </div>
