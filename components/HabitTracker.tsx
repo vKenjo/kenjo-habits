@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase, isSupabaseConfigured, Habit, HabitCompletion } from '@/lib/supabase';
 
 interface HabitStats {
@@ -61,6 +62,19 @@ export default function HabitTracker() {
             today.getMonth() === currentDate.getMonth() &&
             today.getFullYear() === currentDate.getFullYear()
         );
+    };
+
+    // Parse a date string (YYYY-MM-DD or ISO timestamp) to local midnight Date
+    // This handles timezone correctly by extracting the date portion
+    const parseLocalDate = (dateStr: string): Date => {
+        // If it's a simple YYYY-MM-DD format
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            const [year, month, day] = dateStr.split('-').map(Number);
+            return new Date(year, month - 1, day);
+        }
+        // If it's an ISO timestamp, create Date and extract local date
+        const d = new Date(dateStr);
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate());
     };
 
     // Fetch habits
@@ -141,12 +155,12 @@ export default function HabitTracker() {
 
     // Calculate stats for a habit
     const calculateStats = useCallback((habitId: string): HabitStats => {
-        if (!currentDate) return { completionRate: 0, currentStreak: 0, bestStreak: 0, totalCompleted: 0, totalDays: 0 };
+        const habit = habits.find(h => h.id === habitId);
+        if (!currentDate || !habit) return { completionRate: 0, currentStreak: 0, bestStreak: 0, totalCompleted: 0, totalDays: 0 };
 
         const currentMonthStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
 
         // Filter completions for this month
-        // IMPORTANT: Ensure unique dates to prevent potential duplicates from skewing stats
         const habitCompletions = completions.filter(c =>
             c.habit_id === habitId &&
             c.completed_date.startsWith(currentMonthStr)
@@ -157,32 +171,73 @@ export default function HabitTracker() {
         const daysInMonth = getDaysInMonth(currentDate);
         const isCurrentMonth = today.getMonth() === currentDate.getMonth() && today.getFullYear() === currentDate.getFullYear();
 
-        // For stats, we usually care about "days passed so far" if it's the current month
-        const totalDays = isCurrentMonth ? today.getDate() : daysInMonth;
+        // Determine effective start date (max of first day of month OR [creation date / earliest completion])
+        const firstDayOfMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
 
-        // Count completed days
-        let totalCompleted = 0;
-        if (isCurrentMonth) {
-            // Only count completions up to today to avoid >100% if future dates are checked
-            const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-            uniqueDates.forEach(date => {
-                if (date <= todayStr) totalCompleted++;
-            });
-        } else {
-            totalCompleted = uniqueDates.size;
+        // Find earliest completion for this habit in the current view context
+        let earliestRelevantCompletion: Date | null = null;
+        if (habitCompletions.length > 0) {
+            const dates = habitCompletions.map(c => c.completed_date).sort();
+            if (dates.length > 0) {
+                // Use parseLocalDate to correctly handle YYYY-MM-DD format
+                earliestRelevantCompletion = parseLocalDate(dates[0]);
+            }
         }
+
+        // Use parseLocalDate to correctly handle timezone for created_at
+        const createdAtDate = parseLocalDate(habit.created_at);
+
+        // Effective start is the EARLIER of creation or first completion
+        let effectiveStart = createdAtDate;
+        if (earliestRelevantCompletion && earliestRelevantCompletion < createdAtDate) {
+            effectiveStart = earliestRelevantCompletion;
+        }
+
+        let startCountingDate = firstDayOfMonthDate;
+        if (effectiveStart > firstDayOfMonthDate) {
+            startCountingDate = effectiveStart;
+        }
+
+        // Determine effective end date (today if current month, else end of month)
+        const endCountingDate = isCurrentMonth ? today : new Date(currentDate.getFullYear(), currentDate.getMonth(), daysInMonth);
+        endCountingDate.setHours(0, 0, 0, 0);
+
+        // Calculate total trackable days
+        let totalDays = 0;
+        if (startCountingDate <= endCountingDate) {
+            const diffTime = Math.abs(endCountingDate.getTime() - startCountingDate.getTime());
+            totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        }
+
+        // Calculate total completed within the valid window
+        let totalCompleted = 0;
+        const startCountingStr = `${startCountingDate.getFullYear()}-${String(startCountingDate.getMonth() + 1).padStart(2, '0')}-${String(startCountingDate.getDate()).padStart(2, '0')}`;
+        const endCountingStr = `${endCountingDate.getFullYear()}-${String(endCountingDate.getMonth() + 1).padStart(2, '0')}-${String(endCountingDate.getDate()).padStart(2, '0')}`;
+
+        uniqueDates.forEach(date => {
+            if (date >= startCountingStr && date <= endCountingStr) {
+                totalCompleted++;
+            }
+        });
 
         const completionRate = totalDays > 0 ? Math.round((totalCompleted / totalDays) * 100) : 0;
 
-        // Calculate streaks
+        // Calculate streaks (simplified logic: check streaks within the month view)
+        // Note: Best streak might theoretically span across months, but we are approximate here for the month view
         let bestStreak = 0;
         let tempStreak = 0;
 
-        // Simple streak calculation iterating through days of month
         for (let i = 1; i <= daysInMonth; i++) {
             const dateStr = formatDate(currentDate, i);
+
+            // Respect the creation date for streaks too - don't count missing days before creation
+            // Although 'streak' implies contiguous completion, we treat pre-creation days as non-existent.
+            // But standard streak logic usually just looks for contiguous checks. 
+            // If we want to be strict: a streak can't exist before creation.
+            if (dateStr < startCountingStr) continue;
+
             // Don't count streaks into the future
-            if (isCurrentMonth && i > today.getDate()) break;
+            if (dateStr > endCountingStr) break;
 
             if (uniqueDates.has(dateStr)) {
                 tempStreak++;
@@ -192,26 +247,26 @@ export default function HabitTracker() {
             }
         }
 
-        // Recalculate current streak working backwards from today
+        // Recalculate current streak working backwards from today/end of month
         let currentStreak = 0;
-        if (isCurrentMonth) {
-            // Check backwards from today
-            for (let i = today.getDate(); i >= 1; i--) {
-                const dateStr = formatDate(currentDate, i);
-                if (uniqueDates.has(dateStr)) {
-                    currentStreak++;
-                } else {
-                    // If today is unchecked, streak is 0.
-                    break;
-                }
+        // Start checking from the last valid day (today or end of month)
+        const lastCheckDay = isCurrentMonth ? today.getDate() : daysInMonth;
+
+        for (let i = lastCheckDay; i >= 1; i--) {
+            const dateStr = formatDate(currentDate, i);
+
+            // If we go before creation date, stop
+            if (dateStr < startCountingStr) break;
+
+            if (uniqueDates.has(dateStr)) {
+                currentStreak++;
+            } else {
+                break;
             }
-        } else {
-            // For past months, current streak isn't really relevant, but let's say 0
-            currentStreak = 0;
         }
 
-        return { completionRate, currentStreak, bestStreak, totalCompleted: uniqueDates.size, totalDays }; // Return raw totals for debugging if needed
-    }, [completions, currentDate]);
+        return { completionRate, currentStreak, bestStreak, totalCompleted, totalDays };
+    }, [completions, currentDate, habits]);
 
     // Overall stats
     const overallStats = useMemo(() => {
@@ -225,23 +280,87 @@ export default function HabitTracker() {
         const prevDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
         const prevMonthStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
 
-        // Current Month Stats
-        const today = new Date();
-        const daysInMonth = getDaysInMonth(currentDate);
-        const isCurrentMonth = today.getMonth() === currentDate.getMonth() && today.getFullYear() === currentDate.getFullYear();
-        const totalDays = isCurrentMonth ? today.getDate() : daysInMonth;
+        // Helper to calculate stats for a specific month context
+        const calculateMonthStats = (date: Date, monthStr: string) => {
+            const today = new Date();
+            const daysInMonth = getDaysInMonth(date);
+            const isCurrentMonth = today.getMonth() === date.getMonth() && today.getFullYear() === date.getFullYear();
 
-        const currentCompletions = completions.filter(c => c.completed_date.startsWith(currentMonthStr));
-        const totalPossible = habits.length * totalDays;
-        const totalCompleted = currentCompletions.length;
-        const overallRate = totalPossible > 0 ? Math.round((totalCompleted / totalPossible) * 100) : 0;
+            // End date for the month context (either today or end of month)
+            const endDate = isCurrentMonth ? today : new Date(date.getFullYear(), date.getMonth(), daysInMonth);
+            endDate.setHours(0, 0, 0, 0);
+            const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+
+            const monthCompletions = completions.filter(c => c.completed_date.startsWith(monthStr));
+
+            let totalPossible = 0;
+            let totalCompleted = 0;
+
+            habits.forEach(habit => {
+                const firstDayOfMonthDate = new Date(date.getFullYear(), date.getMonth(), 1);
+                // Use parseLocalDate to correctly handle timezone for created_at
+                const createdAtDate = parseLocalDate(habit.created_at);
+
+                // Check for retroactive completions in this month
+                const habitCompletionsInMonth = monthCompletions.filter(c => c.habit_id === habit.id);
+                let earliestCompletion: Date | null = null;
+                if (habitCompletionsInMonth.length > 0) {
+                    const sorted = habitCompletionsInMonth.map(c => c.completed_date).sort();
+                    // Use parseLocalDate to correctly handle YYYY-MM-DD format
+                    earliestCompletion = parseLocalDate(sorted[0]);
+                }
+
+                let effectiveStart = createdAtDate;
+                if (earliestCompletion && earliestCompletion < createdAtDate) {
+                    effectiveStart = earliestCompletion;
+                }
+
+                let startCountingDate = firstDayOfMonthDate;
+                if (effectiveStart > firstDayOfMonthDate) {
+                    startCountingDate = effectiveStart;
+                }
+                const startCountingStr = `${startCountingDate.getFullYear()}-${String(startCountingDate.getMonth() + 1).padStart(2, '0')}-${String(startCountingDate.getDate()).padStart(2, '0')}`;
+
+                // Calculate trackable days for this habit
+                if (startCountingDate <= endDate) {
+                    const diffTime = Math.abs(endDate.getTime() - startCountingDate.getTime());
+                    const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                    totalPossible += days;
+
+                    // Count completions for this habit within valid range
+                    // Iterate days to be safe? Or filter the set?
+                    // Filtering the set is efficient enough
+
+                    // Optimization: We could iterate days, or check completions.
+                    // Given we have a Set of all completions, iterating the set is O(C).
+                    // But we want completions FOR THIS HABIT.
+                    // Let's filter completions again or just iterate the days if easier.
+                    // Iterating days is safer for regex date checks.
+
+                    // Actually, we can just check the cached completions for this habit in range.
+                    const habitCompletionsInRange = monthCompletions.filter(c =>
+                        c.habit_id === habit.id &&
+                        c.completed_date >= startCountingStr &&
+                        c.completed_date <= endDateStr
+                    );
+                    // Use Set to ensure uniqueness
+                    const uniqueDates = new Set(habitCompletionsInRange.map(c => c.completed_date));
+                    totalCompleted += uniqueDates.size;
+                }
+            });
+
+            return { totalPossible, totalCompleted };
+        };
+
+        const currentStats = calculateMonthStats(currentDate, currentMonthStr);
+        const overallRate = currentStats.totalPossible > 0 ? Math.round((currentStats.totalCompleted / currentStats.totalPossible) * 100) : 0;
 
         // If it's the start (Jan 2026), don't compare with previous month
         if (isStartOfTime) {
             return {
                 overallRate,
-                totalCompleted,
-                totalPossible,
+                totalCompleted: currentStats.totalCompleted,
+                totalPossible: currentStats.totalPossible,
                 habitsTracked: habits.length,
                 rateDiff: 0,
                 completedDiff: 0,
@@ -251,21 +370,16 @@ export default function HabitTracker() {
         }
 
         // Previous Month Stats
-        const prevDaysInMonth = getDaysInMonth(prevDate);
-        const prevTotalDays = prevDaysInMonth; // Always full month for history
-
-        const prevCompletions = completions.filter(c => c.completed_date.startsWith(prevMonthStr));
-        const prevTotalPossible = habits.length * prevTotalDays;
-        const prevTotalCompleted = prevCompletions.length;
-        const prevRate = prevTotalPossible > 0 ? Math.round((prevTotalCompleted / prevTotalPossible) * 100) : 0;
+        const prevStats = calculateMonthStats(prevDate, prevMonthStr);
+        const prevRate = prevStats.totalPossible > 0 ? Math.round((prevStats.totalCompleted / prevStats.totalPossible) * 100) : 0;
 
         const rateDiff = overallRate - prevRate;
-        const completedDiff = totalCompleted - prevTotalCompleted;
+        const completedDiff = currentStats.totalCompleted - prevStats.totalCompleted;
 
         return {
             overallRate,
-            totalCompleted,
-            totalPossible,
+            totalCompleted: currentStats.totalCompleted,
+            totalPossible: currentStats.totalPossible,
             habitsTracked: habits.length,
             rateDiff,
             completedDiff,
@@ -768,7 +882,7 @@ export default function HabitTracker() {
             </div>
 
             {/* Full Screen Add Habit Modal */}
-            {isModalOpen && (
+            {isModalOpen && typeof document !== 'undefined' && createPortal(
                 <div
                     className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/95 backdrop-blur-xl animate-fade-in"
                     onClick={() => setIsModalOpen(false)}
@@ -832,11 +946,12 @@ export default function HabitTracker() {
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* Delete Confirmation Modal */}
-            {deleteModal.open && deleteModal.habit && (
+            {deleteModal.open && deleteModal.habit && typeof document !== 'undefined' && createPortal(
                 <div
                     className="fixed inset-0 bg-midnight/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in"
                     onClick={() => setDeleteModal({ open: false, habit: null })}
@@ -869,7 +984,8 @@ export default function HabitTracker() {
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
 
