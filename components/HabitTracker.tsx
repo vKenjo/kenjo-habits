@@ -77,6 +77,14 @@ export default function HabitTracker() {
         return new Date(d.getFullYear(), d.getMonth(), d.getDate());
     };
 
+    // Check if a day is before the habit's creation date
+    const isBeforeCreation = (habit: Habit, day: number): boolean => {
+        if (!currentDate) return false;
+        const dayDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+        const createdDate = parseLocalDate(habit.created_at);
+        return dayDate < createdDate;
+    };
+
     // Fetch habits
     const fetchHabits = useCallback(async () => {
         if (!isSupabaseConfigured) return;
@@ -739,33 +747,39 @@ export default function HabitTracker() {
                                             {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
                                                 const completed = isCompleted(habit.id, day);
                                                 const today = isToday(day);
+                                                const beforeCreation = isBeforeCreation(habit, day);
                                                 return (
                                                     <div
                                                         key={day}
                                                         className="w-10 sm:w-11 md:w-12 flex-shrink-0 flex items-center justify-center p-1"
                                                     >
-                                                        <button
-                                                            className={`
+                                                        {beforeCreation ? (
+                                                            // Empty/disabled cell for days before habit creation
+                                                            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-transparent" />
+                                                        ) : (
+                                                            <button
+                                                                className={`
                                 w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-all transform
                                 ${completed
-                                                                    ? today
-                                                                        ? 'bg-gradient-to-br from-midnight to-royal shadow-md'
-                                                                        : 'bg-gradient-to-br from-royal to-china shadow-md'
-                                                                    : today
-                                                                        ? 'bg-dawn/50 border-2 border-royal/30 hover:border-royal hover:bg-dawn'
-                                                                        : 'bg-porcelain/50 border-2 border-transparent hover:border-china/30 hover:bg-porcelain'
-                                                                }
+                                                                        ? today
+                                                                            ? 'bg-gradient-to-br from-midnight to-royal shadow-md'
+                                                                            : 'bg-gradient-to-br from-royal to-china shadow-md'
+                                                                        : today
+                                                                            ? 'bg-dawn/50 border-2 border-royal/30 hover:border-royal hover:bg-dawn'
+                                                                            : 'bg-porcelain/50 border-2 border-transparent hover:border-china/30 hover:bg-porcelain'
+                                                                    }
                                 hover:scale-110 active:scale-95
                               `}
-                                                            onClick={() => toggleCompletion(habit.id, day)}
-                                                            aria-label={`${completed ? 'Unmark' : 'Mark'} ${habit.name} for day ${day}`}
-                                                        >
-                                                            {completed && (
-                                                                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                                                </svg>
-                                                            )}
-                                                        </button>
+                                                                onClick={() => toggleCompletion(habit.id, day)}
+                                                                aria-label={`${completed ? 'Unmark' : 'Mark'} ${habit.name} for day ${day}`}
+                                                            >
+                                                                {completed && (
+                                                                    <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                                    </svg>
+                                                                )}
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 );
                                             })}
@@ -843,6 +857,22 @@ export default function HabitTracker() {
                                         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
                                             const completed = isCompleted(selectedHabit.id, day);
                                             const today = isToday(day);
+                                            const beforeCreation = isBeforeCreation(selectedHabit, day);
+
+                                            if (beforeCreation) {
+                                                // Disabled cell for days before habit creation
+                                                return (
+                                                    <div
+                                                        key={day}
+                                                        className="aspect-square rounded-xl flex flex-col items-center justify-center bg-porcelain/30 text-china/40 cursor-not-allowed"
+                                                    >
+                                                        <span className="text-sm sm:text-base font-semibold">
+                                                            {day}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            }
+
                                             return (
                                                 <button
                                                     key={day}
