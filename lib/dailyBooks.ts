@@ -49,11 +49,52 @@ export const dailyBooks: DailyBook[] = [
     }
 ];
 
+// Constants for day of year validation
+export const MIN_DAY_OF_YEAR = 1;
+export const MAX_DAY_OF_YEAR = 366; // Accounts for leap years
+
+/**
+ * Get the day of year (1-366) using local timezone
+ * This ensures consistent behavior across client and server
+ */
 export function getDayOfYear(date: Date = new Date()): number {
-    const start = new Date(date.getFullYear(), 0, 0);
-    const diff = date.getTime() - start.getTime();
+    // Use local date components to avoid timezone issues
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const day = date.getDate();
+
+    // Create a date at start of year using local timezone
+    const startOfYear = new Date(year, 0, 1);
+    // Create current date using local timezone components
+    const currentDate = new Date(year, month, day);
+
+    const diff = currentDate.getTime() - startOfYear.getTime();
     const oneDay = 1000 * 60 * 60 * 24;
-    return Math.floor(diff / oneDay);
+    return Math.floor(diff / oneDay) + 1; // +1 because Jan 1 = day 1, not day 0
+}
+
+/**
+ * Check if a day of year is valid for the given year
+ */
+export function isValidDayOfYear(dayOfYear: number, year: number = new Date().getFullYear()): boolean {
+    if (dayOfYear < MIN_DAY_OF_YEAR) return false;
+
+    // Check for leap year
+    const isLeapYear = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+    const maxDay = isLeapYear ? 366 : 365;
+
+    return dayOfYear <= maxDay;
+}
+
+/**
+ * Get a consistent local date string (YYYY-MM-DD) from day of year
+ */
+export function getLocalDateString(dayOfYear: number, year: number = new Date().getFullYear()): string {
+    const date = new Date(year, 0, dayOfYear);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
 }
 
 export function formatDateForReading(date: Date = new Date()): string {

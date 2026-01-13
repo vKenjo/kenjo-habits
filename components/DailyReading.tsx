@@ -52,7 +52,9 @@ export default function DailyReading() {
 
         await Promise.all(dailyBooks.map(async (book) => {
             try {
-                const response = await fetch(`/api/ratings?bookId=${book.id}&date=${dateString}&streak=true`, { cache: 'no-store' });
+                const response = await fetch(`/api/ratings?bookId=${book.id}&date=${dateString}&streak=true`, {
+                    cache: 'no-store' // Always get fresh streak data
+                });
                 if (response.ok) {
                     const data = await response.json();
                     newStreakData[book.id] = {
@@ -82,7 +84,11 @@ export default function DailyReading() {
         setIsLoadingContent(true);
         setError(null);
         try {
-            const response = await fetch(`/api/reading?bookId=${book.id}&day=${dayOfYear}`);
+            // Add cache-busting parameter based on current date to ensure fresh content each day
+            const cacheBuster = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            const response = await fetch(`/api/reading?bookId=${book.id}&day=${dayOfYear}&_=${cacheBuster}`, {
+                cache: 'no-cache' // Ensure we always get fresh content for the current day
+            });
             if (!response.ok) throw new Error('Failed to fetch content');
             const data = await response.json();
             setReadingContent(data);

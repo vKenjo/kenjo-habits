@@ -19,6 +19,19 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Missing bookId parameter' }, { status: 400 });
     }
 
+    // Validate day of year
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const isLeapYear = (currentYear % 4 === 0 && currentYear % 100 !== 0) || (currentYear % 400 === 0);
+    const maxDayOfYear = isLeapYear ? 366 : 365;
+
+    if (isNaN(dayOfYear) || dayOfYear < 1 || dayOfYear > maxDayOfYear) {
+        return NextResponse.json(
+            { error: `Invalid day parameter. Must be between 1 and ${maxDayOfYear} for ${currentYear}.` },
+            { status: 400 }
+        );
+    }
+
     const book = getBookById(bookId);
     if (!book) {
         return NextResponse.json({ error: 'Book not found' }, { status: 404 });
@@ -32,6 +45,15 @@ export async function GET(request: NextRequest) {
 
     try {
         const result = await extractDailyContent(epubPath, dayOfYear, book.id);
+
+        // Add cache control headers to ensure daily refresh
+        // Cache for 1 hour, but allow revalidation
+        const headers = new Headers({
+            'Content-Type': 'application/json',
+            'Cache-Control': 'public, max-age=3600, must-revalidate',
+            'Vary': 'Accept-Encoding'
+        });
+
         return NextResponse.json({
             bookId: book.id,
             title: book.title,
@@ -40,16 +62,20 @@ export async function GET(request: NextRequest) {
             content: result.content,
             monthIntro: result.monthIntro,
             monthTheme: result.monthTheme
-        });
+        }, { headers });
     } catch (error) {
         console.error('Error parsing epub:', error);
-        return NextResponse.json({ error: 'Failed to parse epub' }, { status: 500 });
+        return NextResponse.json(
+            { error: 'Failed to parse epub', details: error instanceof Error ? error.message : 'Unknown error' },
+            { status: 500 }
+        );
     }
 }
 
 // Get the date string patterns to search for
 function getDatePatterns(dayOfYear: number): string[] {
-    const date = new Date(new Date().getFullYear(), 0, dayOfYear);
+    const currentYear = new Date().getFullYear();
+    const date = new Date(currentYear, 0, dayOfYear);
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
         'July', 'August', 'September', 'October', 'November', 'December'];
     const monthName = monthNames[date.getMonth()];
@@ -62,12 +88,37 @@ function getDatePatterns(dayOfYear: number): string[] {
         return n + (s[(v - 20) % 10] || s[v] || s[0]);
     };
 
-    return [
+    // Known typos in Calendar of Wisdom EPUB (e.g., "Januarys" instead of "January")
+    const monthTypos: Record<string, string[]> = {
+        'January': ['Januarys', 'Janury'],
+        'February': ['Februarys', 'Febuary'],
+        'March': ['Marchs'],
+        'April': ['Aprils'],
+        'May': ['Mays'],
+        'June': ['Junes'],
+        'July': ['Julys'],
+        'August': ['Augusts'],
+        'September': ['Septembers'],
+        'October': ['Octobers'],
+        'November': ['Novembers'],
+        'December': ['Decembers'],
+    };
+
+    const patterns = [
         `${monthName} ${getOrdinal(dayOfMonth)}`, // "January 1st"
         `${monthName} ${dayOfMonth}`,              // "January 1"
         `${monthName.toUpperCase()} ${dayOfMonth}`, // "JANUARY 1"
         `${dayOfMonth} ${monthName}`,              // "1 January"
     ];
+
+    // Add typo patterns for the current month
+    const typos = monthTypos[monthName] || [];
+    for (const typo of typos) {
+        patterns.push(`${typo} ${dayOfMonth}`);    // "Januarys 13"
+        patterns.push(`${typo} ${getOrdinal(dayOfMonth)}`); // "Januarys 13th"
+    }
+
+    return patterns;
 }
 
 interface EpubChapter {
@@ -284,7 +335,39 @@ function getBookConfig(bookId: string): { startChapter: number } {
 function isTOC(content: string): boolean {
     const lower = content.toLowerCase();
     const linkCount = (content.match(/<a /gi) || []).length;
-    return linkCount > 10 || (lower.includes('contents') && linkCount > 3);
+
+    // Check for standard TOC indicators
+    if (linkCount > 10 || (lower.includes('contents') && linkCount > 3)) {
+        return true;
+    }
+
+    // Check for Name Index or Author Index sections
+    // These contain date references like "January 13; February 11" for cross-referencing
+    // but aren't actual daily content
+    const indexPatterns = [
+        'name index',
+        'author index',
+        'subject index',
+        'index of names',
+        'index of authors',
+        'alphabetical index'
+    ];
+
+    for (const pattern of indexPatterns) {
+        if (lower.includes(pattern)) {
+            return true;
+        }
+    }
+
+    // Additional heuristic: if content has many semicolon-separated date lists
+    // (e.g., "January 13; February 11; March 2;"), it's likely an index
+    const dateListPattern = /(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d+[;,]/gi;
+    const dateListMatches = content.match(dateListPattern) || [];
+    if (dateListMatches.length > 20) {
+        return true;
+    }
+
+    return false;
 }
 
 function cleanHtmlContent(html: string): string {
@@ -341,12 +424,18 @@ function cleanHtmlContent(html: string): string {
     clean = clean.replace(/OceanofPDF\.com/gi, '');
     clean = clean.replace(/<p>\s*<em>OceanofPDF\.com<\/em>\s*<\/p>/gi, '');
 
-    // Remove date headers (e.g., "January 1", "2 January")
+    // Remove date headers (e.g., "January 1", "2 January", "Januarys 13")
     // These are redundant as they are shown in the modal header
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'];
+    // Include common typos found in some EPUBs (e.g., Calendar of Wisdom has "Januarys 13")
+    const allMonthVariants = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December',
+        'Januarys', 'Janury', 'Februarys', 'Febuary', 'Marchs', 'Aprils',
+        'Mays', 'Junes', 'Julys', 'Augusts', 'Septembers', 'Octobers',
+        'Novembers', 'Decembers'
+    ];
 
-    for (const month of monthNames) {
+    for (const month of allMonthVariants) {
         const patterns = [
             // Month Day (e.g., "January 2nd", "January 2")
             `(${month}\\s+\\d{1,2}(?:st|nd|rd|th)?)`,
