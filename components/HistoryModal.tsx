@@ -1,17 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../convex/_generated/api';
 import { dailyBooks, DailyBook } from '@/lib/dailyBooks';
 import ReadingModal, { ReadingContent } from './ReadingModal';
-
-// ... existing imports
-
-interface HistoryData {
-    date: string;
-    journal: string;
-    readings: { book_id: string; rating: number }[];
-}
 
 interface MonthDayData {
     date: string;
@@ -21,17 +15,14 @@ interface MonthDayData {
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const RATING_EMOJIS = ['😔', '😐', '🙂', '😊', '🤩'];
+const RATING_LABELS = ['Not great', 'Okay', 'Good', 'Great', 'Amazing'];
 
 export default function HistoryModal({ onClose }: { onClose: () => void }) {
     const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
     const [selectedDate, setSelectedDate] = useState<string>(
         new Date().toISOString().split('T')[0]
     );
-    const [history, setHistory] = useState<HistoryData | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
     const [currentMonth, setCurrentMonth] = useState(new Date());
-
-    const [monthData, setMonthData] = useState<MonthDayData[]>([]);
 
     // Reading State
     const [selectedReadBook, setSelectedReadBook] = useState<DailyBook | null>(null);
@@ -41,39 +32,22 @@ export default function HistoryModal({ onClose }: { onClose: () => void }) {
     const [contentError, setContentError] = useState<string | null>(null);
     const [isSavingRating, setIsSavingRating] = useState(false);
 
-    useEffect(() => {
-        const fetchHistory = async () => {
-            setIsLoading(true);
-            try {
-                const res = await fetch(`/api/history?date=${selectedDate}`);
-                const data = await res.json();
-                setHistory(data);
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchHistory();
-    }, [selectedDate]);
+    // Convex reactive queries
+    const history = useQuery(api.history.getByDate, { date: selectedDate });
 
-    // Monthly Data Fetching
-    useEffect(() => {
-        const fetchMonthData = async () => {
-            const year = currentMonth.getFullYear();
-            const month = String(currentMonth.getMonth() + 1).padStart(2, '0');
-            try {
-                const res = await fetch(`/api/history/month?month=${year}-${month}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setMonthData(data);
-                }
-            } catch (error) {
-                console.error('Failed to fetch month data', error);
-            }
+    const monthRange = useMemo(() => {
+        const year = currentMonth.getFullYear();
+        const month = String(currentMonth.getMonth() + 1).padStart(2, '0');
+        const lastDay = new Date(year, currentMonth.getMonth() + 1, 0).getDate();
+        return {
+            startDate: `${year}-${month}-01`,
+            endDate: `${year}-${month}-${String(lastDay).padStart(2, '0')}`,
         };
-        fetchMonthData();
     }, [currentMonth]);
+
+    const monthData = useQuery(api.history.getByMonth, monthRange) as MonthDayData[] | undefined;
+
+    const upsertRating = useMutation(api.readingRatings.upsert);
 
     const handleBookClick = async (book: DailyBook, dayOfYear: number) => {
         setSelectedReadBook(book);
@@ -94,8 +68,7 @@ export default function HistoryModal({ onClose }: { onClose: () => void }) {
     };
 
     const handleRating = async (bookId: string, rating: number) => {
-        // Check if rating exists and is different
-        const existingRating = history?.readings?.find(r => r.book_id === bookId)?.rating;
+        const existingRating = history?.readings?.find(r => r.bookId === bookId)?.rating;
 
         if (existingRating && existingRating !== rating) {
             const confirmChange = window.confirm(
@@ -106,29 +79,8 @@ export default function HistoryModal({ onClose }: { onClose: () => void }) {
 
         setIsSavingRating(true);
         try {
-            const response = await fetch('/api/ratings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ bookId, date: selectedDate, rating })
-            });
-
-            if (response.ok) {
-                // Refresh history for this date
-                const res = await fetch(`/api/history?date=${selectedDate}`);
-                const data = await res.json();
-                setHistory(data);
-
-                // Refresh month data if needed (optional but good for calendar view)
-                // We'll simplisticly just update the month data as we have the function in useEffect but it relies on currentMonth state change or we can extract it.
-                // For now, let's just trigger a lightweight refresh or ignore since calendar view is behind the modal usually.
-                // Actually, the calendar is visible on the left side. So we should update it.
-                // We can just re-fectch month data.
-                const year = currentMonth.getFullYear();
-                const month = String(currentMonth.getMonth() + 1).padStart(2, '0');
-                fetch(`/api/history/month?month=${year}-${month}`)
-                    .then(r => r.json())
-                    .then(d => setMonthData(d));
-            }
+            await upsertRating({ bookId, date: selectedDate, rating });
+            // No manual refresh needed - Convex reactive queries auto-update
         } catch (err) {
             console.error('Failed to save rating:', err);
         } finally {
@@ -136,11 +88,9 @@ export default function HistoryModal({ onClose }: { onClose: () => void }) {
         }
     };
 
-    const RATING_LABELS = ['Not great', 'Okay', 'Good', 'Great', 'Amazing'];
-
     const getDayData = (day: number) => {
         const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        return monthData.find(d => d.date === dateStr);
+        return monthData?.find(d => d.date === dateStr);
     };
 
     const hasReadingForFilter = (dayData: MonthDayData | undefined) => {
@@ -175,6 +125,8 @@ export default function HistoryModal({ onClose }: { onClose: () => void }) {
 
     if (!mounted) return null;
 
+    const isLoading = history === undefined;
+
     return createPortal(
         <div className="fixed inset-0 z-[100] bg-[#F9F9FA] flex flex-col animate-fade-in">
             {/* Top Navigation / Close Bar (Mobile/Tablet) */}
@@ -201,7 +153,7 @@ export default function HistoryModal({ onClose }: { onClose: () => void }) {
                             </div>
                         </div>
 
-                        {/* ONE-SHOT: Book Filter */}
+                        {/* Book Filter */}
                         <div className="flex gap-2 overflow-x-auto pb-2 -mx-2 px-2 no-scrollbar">
                             <button
                                 onClick={() => setSelectedBookId(null)}
@@ -335,7 +287,7 @@ export default function HistoryModal({ onClose }: { onClose: () => void }) {
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                                    {/* Journal Section - Takes Priority */}
+                                    {/* Journal Section */}
                                     <section className="xl:col-span-2">
                                         <div className="bg-white rounded-[32px] p-8 md:p-10 shadow-sm border border-china/5 min-h-[300px]">
                                             <h4 className="flex items-center gap-3 text-lg font-bold text-midnight mb-6">
@@ -368,7 +320,7 @@ export default function HistoryModal({ onClose }: { onClose: () => void }) {
                                         </h4>
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                             {dailyBooks.map(book => {
-                                                const rating = history?.readings?.find(r => r.book_id === book.id)?.rating;
+                                                const rating = history?.readings?.find(r => r.bookId === book.id)?.rating;
                                                 return (
                                                     <button
                                                         key={book.id}
@@ -420,8 +372,8 @@ export default function HistoryModal({ onClose }: { onClose: () => void }) {
                         setSelectedReadBook(null);
                         setReadingContent(null);
                     }}
-                    currentRating={history?.readings?.find(r => r.book_id === selectedReadBook.id)?.rating || null}
-                    streak={0} // Streak not shown in history context
+                    currentRating={history?.readings?.find(r => r.bookId === selectedReadBook.id)?.rating || null}
+                    streak={0}
                     onRate={(rating) => handleRating(selectedReadBook.id, rating)}
                     isSavingRating={isSavingRating}
                 />

@@ -1,15 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../convex/_generated/api';
 
 import { dailyBooks, getDayOfYear, formatDateForReading, DailyBook } from '@/lib/dailyBooks';
 import ReadingModal, { ReadingContent } from './ReadingModal';
-
-interface StreakData {
-    rating: number | null;
-    streak: number;
-    totalDays: number;
-}
 
 // Helper to get month name, day, and formatted date from day of year
 function getDateFromDayOfYear(dayOfYear: number): { monthName: string; dayOfMonth: number; dateString: string } {
@@ -17,7 +13,6 @@ function getDateFromDayOfYear(dayOfYear: number): { monthName: string; dayOfMont
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
         'July', 'August', 'September', 'October', 'November', 'December'];
 
-    // Use local date parts to ensure dateString matches the user's local day
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -42,34 +37,18 @@ export default function DailyReading() {
     const [readingContent, setReadingContent] = useState<ReadingContent | null>(null);
     const [isLoadingContent, setIsLoadingContent] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [streakData, setStreakData] = useState<Record<string, StreakData>>({});
     const [isSavingRating, setIsSavingRating] = useState(false);
 
-    // Fetch streak data for all books on load
-    const fetchAllStreaks = useCallback(async (day: number) => {
-        const { dateString } = getDateFromDayOfYear(day);
-        const newStreakData: Record<string, StreakData> = {};
+    const bookIds = useMemo(() => dailyBooks.map((b) => b.id), []);
+    const dateString = useMemo(() => getDateFromDayOfYear(dayOfYear).dateString, [dayOfYear]);
 
-        await Promise.all(dailyBooks.map(async (book) => {
-            try {
-                const response = await fetch(`/api/ratings?bookId=${book.id}&date=${dateString}&streak=true`, {
-                    cache: 'no-store' // Always get fresh streak data
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    newStreakData[book.id] = {
-                        rating: data.rating,
-                        streak: data.streak || 0,
-                        totalDays: data.totalDays || 0
-                    };
-                }
-            } catch (err) {
-                console.error(`Failed to fetch streak for ${book.id}:`, err);
-            }
-        }));
+    // Single reactive query for all book streaks
+    const streakData = useQuery(api.readingRatings.getAllStreaks, {
+        bookIds,
+        date: dateString,
+    });
 
-        setStreakData(newStreakData);
-    }, []);
+    const upsertRating = useMutation(api.readingRatings.upsert);
 
     useEffect(() => {
         const now = new Date();
@@ -77,17 +56,15 @@ export default function DailyReading() {
         setDayOfYear(day);
         setDisplayDateString(formatDateForReading(now));
         setIsLoaded(true);
-        fetchAllStreaks(day);
-    }, [fetchAllStreaks]);
+    }, []);
 
     const fetchContent = useCallback(async (book: DailyBook) => {
         setIsLoadingContent(true);
         setError(null);
         try {
-            // Add cache-busting parameter based on current date to ensure fresh content each day
-            const cacheBuster = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            const cacheBuster = new Date().toISOString().split('T')[0];
             const response = await fetch(`/api/reading?bookId=${book.id}&day=${dayOfYear}&_=${cacheBuster}`, {
-                cache: 'no-cache' // Ensure we always get fresh content for the current day
+                cache: 'no-cache'
             });
             if (!response.ok) throw new Error('Failed to fetch content');
             const data = await response.json();
@@ -111,37 +88,9 @@ export default function DailyReading() {
     };
 
     const handleRating = async (bookId: string, rating: number) => {
-        const { dateString } = getDateFromDayOfYear(dayOfYear);
-
-        // Optimistically update UI
-        setStreakData(prev => ({
-            ...prev,
-            [bookId]: {
-                ...prev[bookId],
-                rating,
-                streak: (prev[bookId]?.streak || 0) + (prev[bookId]?.rating ? 0 : 1)
-            }
-        }));
         setIsSavingRating(true);
-
         try {
-            const response = await fetch('/api/ratings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ bookId, date: dateString, rating })
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setStreakData(prev => ({
-                    ...prev,
-                    [bookId]: {
-                        rating: data.rating,
-                        streak: data.streak,
-                        totalDays: data.totalDays
-                    }
-                }));
-            }
+            await upsertRating({ bookId, date: dateString, rating });
         } catch (err) {
             console.error('Failed to save rating:', err);
         } finally {
@@ -199,8 +148,8 @@ export default function DailyReading() {
                                 key={book.id}
                                 book={book}
                                 dateLabel={`${monthName} ${dayOfMonth}`}
-                                streak={streakData[book.id]?.streak || 0}
-                                isCompleted={!!streakData[book.id]?.rating}
+                                streak={streakData?.[book.id]?.streak || 0}
+                                isCompleted={!!streakData?.[book.id]?.rating}
                                 onClick={() => handleBookClick(book)}
                             />
                         ))}
@@ -218,8 +167,8 @@ export default function DailyReading() {
                     isLoading={isLoadingContent}
                     error={error}
                     onClose={closeModal}
-                    currentRating={streakData[selectedBook.id]?.rating || null}
-                    streak={streakData[selectedBook.id]?.streak || 0}
+                    currentRating={streakData?.[selectedBook.id]?.rating || null}
+                    streak={streakData?.[selectedBook.id]?.streak || 0}
                     onRate={(rating) => handleRating(selectedBook.id, rating)}
                     isSavingRating={isSavingRating}
                 />
@@ -270,7 +219,7 @@ function BookCard({
                             <div className="flex items-center gap-1">
                                 <span className="w-1 h-1 rounded-full bg-china/20" />
                                 <span className="flex items-center gap-0.5 text-[11px] font-bold text-amber-500">
-                                    🔥 {streak}
+                                    {'\uD83D\uDD25'} {streak}
                                 </span>
                             </div>
                         )}
@@ -297,5 +246,3 @@ function BookCard({
         </button>
     );
 }
-
-

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../convex/_generated/api';
 import { maxims, Maxim } from '@/lib/maxims';
 
 const MAX_REFRESHES_PER_DAY = 1;
@@ -19,8 +21,15 @@ export default function DailyQuote() {
     const [currentMaxim, setCurrentMaxim] = useState<Maxim | null>(null);
     const [refreshCount, setRefreshCount] = useState(0);
     const [isLoaded, setIsLoaded] = useState(false);
-    const [rating, setRating] = useState<boolean | null>(null);
-    const [isLoadingRating, setIsLoadingRating] = useState(false);
+
+    const ratingData = useQuery(
+        api.maximRatings.getByMaximNumber,
+        currentMaxim ? { maximNumber: currentMaxim.number } : "skip"
+    );
+    const upsertRating = useMutation(api.maximRatings.upsert);
+
+    const rating = ratingData?.rating ?? null;
+    const isLoadingRating = ratingData === undefined;
 
     const getTodayString = () => {
         return new Date().toISOString().split('T')[0];
@@ -39,11 +48,9 @@ export default function DailyQuote() {
             try {
                 const parsed: QuoteState = JSON.parse(savedData);
                 if (parsed.date === today) {
-                    // Same day - use saved quote and count
                     setCurrentMaxim(maxims[parsed.quoteIndex]);
                     setRefreshCount(parsed.refreshCount);
                 } else {
-                    // New day - reset
                     const newIndex = getRandomIndex();
                     setCurrentMaxim(maxims[newIndex]);
                     setRefreshCount(0);
@@ -54,13 +61,11 @@ export default function DailyQuote() {
                     }));
                 }
             } catch {
-                // Invalid data - reset
                 const newIndex = getRandomIndex();
                 setCurrentMaxim(maxims[newIndex]);
                 setRefreshCount(0);
             }
         } else {
-            // No saved data - initialize
             const newIndex = getRandomIndex();
             setCurrentMaxim(maxims[newIndex]);
             setRefreshCount(0);
@@ -73,67 +78,21 @@ export default function DailyQuote() {
         setIsLoaded(true);
     }, [getRandomIndex]);
 
-    // Fetch rating when currentMaxim changes
-    useEffect(() => {
-        if (!currentMaxim) return;
-
-        const fetchRating = async () => {
-            setIsLoadingRating(true);
-            try {
-                const response = await fetch(`/api/maxims/rating?maximNumber=${currentMaxim.number}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    setRating(data.rating);
-                } else {
-                    setRating(null);
-                }
-            } catch (error) {
-                console.error('Error fetching rating:', error);
-                setRating(null);
-            } finally {
-                setIsLoadingRating(false);
-            }
-        };
-
-        fetchRating();
-    }, [currentMaxim]);
-
     const handleRating = async (newRating: boolean) => {
         if (!currentMaxim) return;
 
-        // Optimistic update
-        const previousRating = rating;
-
-        // If clicking the same rating, toggle it off (remove rating)
-        // If clicking different, set to new
         let targetRating: boolean | null = newRating;
         if (rating === newRating) {
             targetRating = null;
         }
 
-        setRating(targetRating);
-        setIsLoadingRating(true); // Ideally shouldn't block UI but prevents double submission
-
         try {
-            const response = await fetch('/api/maxims/rating', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    maximNumber: currentMaxim.number,
-                    rating: targetRating
-                })
+            await upsertRating({
+                maximNumber: currentMaxim.number,
+                rating: targetRating
             });
-
-            if (!response.ok) {
-                throw new Error('Failed to save rating');
-            }
-
-            // If needed, we can update state from response, but optimistic is usually fine
         } catch (error) {
             console.error('Error saving rating:', error);
-            setRating(previousRating); // Revert
-        } finally {
-            setIsLoadingRating(false);
         }
     };
 

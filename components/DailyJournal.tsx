@@ -1,32 +1,33 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../convex/_generated/api';
 
-
+const getTodayDateString = () => {
+    const today = new Date();
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+};
 
 export default function DailyJournal() {
     const [content, setContent] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const [isInitialized, setIsInitialized] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    // Get today's date string YYYY-MM-DD
-    const getTodayDateString = () => {
-        const today = new Date();
-        return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    };
+    const todayDate = getTodayDateString();
+    const journalData = useQuery(api.dailyJournals.getByDate, { date: todayDate });
+    const upsertJournal = useMutation(api.dailyJournals.upsert);
 
-    // Load saved journal from API
+    // Initialize content from Convex query
     useEffect(() => {
-        const date = getTodayDateString();
-        fetch(`/api/journal?date=${date}`)
-            .then(res => res.json())
-            .then(data => {
-                if (data.content) {
-                    setContent(data.content);
-                }
-            })
-            .catch(err => console.error('Failed to load journal:', err));
-    }, []);
+        if (journalData && !isInitialized) {
+            if (journalData.content) {
+                setContent(journalData.content);
+            }
+            setIsInitialized(true);
+        }
+    }, [journalData, isInitialized]);
 
     // Auto-resize textarea
     useEffect(() => {
@@ -36,28 +37,22 @@ export default function DailyJournal() {
         }
     }, [content]);
 
-    // Save on change with debounce to API
+    // Save on change with debounce
     useEffect(() => {
-        const date = getTodayDateString();
+        if (!isInitialized) return;
         const timeoutId = setTimeout(() => {
             if (content) {
                 setIsSaving(true);
-                fetch('/api/journal', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ date, content })
-                })
-                    .then(res => {
-                        if (res.ok) {
-                            setTimeout(() => setIsSaving(false), 1000);
-                        }
+                upsertJournal({ date: todayDate, content })
+                    .then(() => {
+                        setTimeout(() => setIsSaving(false), 1000);
                     })
                     .catch(err => console.error('Failed to save journal:', err));
             }
         }, 1000);
 
         return () => clearTimeout(timeoutId);
-    }, [content]);
+    }, [content, todayDate, upsertJournal, isInitialized]);
 
     return (
         <div className="bg-transparent p-4 space-y-3">

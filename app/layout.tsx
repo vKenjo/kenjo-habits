@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import ConvexClientProvider from "@/components/ConvexClientProvider";
 
 export const metadata: Metadata = {
   title: "Habit Tracker",
@@ -14,7 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
-        {children}
+        <ConvexClientProvider>{children}</ConvexClientProvider>
       </body>
     </html>
   );
