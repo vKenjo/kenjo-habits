@@ -599,12 +599,14 @@ export default function HabitTracker() {
                                                 const completed = isCompleted(habit._id, day);
                                                 const today = isToday(day);
                                                 const beforeCreation = isBeforeCreation(habit.createdAt, day);
+                                                // Show the button if either: the day is after/on creation, OR there's a completion
+                                                const shouldShowButton = !beforeCreation || completed;
                                                 return (
                                                     <div
                                                         key={day}
                                                         className="w-10 sm:w-11 md:w-12 flex-shrink-0 flex items-center justify-center p-1"
                                                     >
-                                                        {beforeCreation ? (
+                                                        {!shouldShowButton ? (
                                                             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-transparent" />
                                                         ) : (
                                                             <button
@@ -704,8 +706,10 @@ export default function HabitTracker() {
                                             const completed = isCompleted(selectedHabit._id, day);
                                             const today = isToday(day);
                                             const beforeCreation = isBeforeCreation(selectedHabit.createdAt, day);
+                                            // Show the button if either: the day is after/on creation, OR there's a completion
+                                            const shouldShowButton = !beforeCreation || completed;
 
-                                            if (beforeCreation) {
+                                            if (!shouldShowButton) {
                                                 return (
                                                     <div
                                                         key={day}
