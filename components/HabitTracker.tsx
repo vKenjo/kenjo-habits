@@ -48,22 +48,22 @@ export default function HabitTracker() {
     }, [currentDate]);
 
     // Convex reactive queries
-    const habits = useQuery(api.habits.list) ?? [];
+    const habits = useQuery(api.habits.list);
     const completions = useQuery(
         api.habitCompletions.listByDateRange,
         dateRange ?? "skip"
-    ) ?? [];
+    );
     const maximRatings = useQuery(
         api.maximRatings.getPositiveByDateRange,
         maximDateRange ?? "skip"
-    ) ?? [];
+    );
 
     // Convex mutations
     const createHabit = useMutation(api.habits.create);
     const removeHabit = useMutation(api.habits.remove);
     const toggleCompletionMut = useMutation(api.habitCompletions.toggle);
 
-    const isLoading = currentDate !== null && habits === undefined;
+    const isLoading = currentDate !== null && (habits === undefined || completions === undefined || maximRatings === undefined);
 
     // Helpers
     const getDaysInMonth = (date: Date) => {
@@ -111,8 +111,8 @@ export default function HabitTracker() {
 
     // Calculate stats for a habit
     const calculateStats = useCallback((habitId: Id<"habits">): HabitStats => {
-        const habit = habits.find(h => h._id === habitId);
-        if (!currentDate || !habit) return { completionRate: 0, currentStreak: 0, bestStreak: 0, totalCompleted: 0, totalDays: 0 };
+        const habit = habits?.find(h => h._id === habitId);
+        if (!currentDate || !habit || !completions) return { completionRate: 0, currentStreak: 0, bestStreak: 0, totalCompleted: 0, totalDays: 0 };
 
         const currentMonthStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
 
@@ -205,7 +205,7 @@ export default function HabitTracker() {
 
     // Overall stats
     const overallStats = useMemo(() => {
-        if (!currentDate || habits.length === 0) return null;
+        if (!currentDate || !habits || !completions || habits.length === 0) return null;
 
         const currentMonthStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
         const isStartOfTime = currentDate.getFullYear() === 2026 && currentDate.getMonth() === 0;
@@ -304,7 +304,7 @@ export default function HabitTracker() {
 
     // Check if habit is completed on a specific day
     const isCompleted = (habitId: Id<"habits">, day: number) => {
-        if (!currentDate) return false;
+        if (!currentDate || !completions) return false;
         const dateStr = formatDate(currentDate, day);
         return completions.some(
             (c) => c.habitId === habitId && c.completedDate === dateStr
@@ -331,7 +331,7 @@ export default function HabitTracker() {
 
     // Add new habit
     const addHabit = async () => {
-        if (!newHabitName.trim()) return;
+        if (!newHabitName.trim() || !habits) return;
 
         try {
             await createHabit({ name: newHabitName.trim(), sortOrder: habits.length });
@@ -384,7 +384,7 @@ export default function HabitTracker() {
         }
     };
 
-    const selectedHabit = habits.find(h => h._id === selectedHabitId) ?? null;
+    const selectedHabit = habits?.find(h => h._id === selectedHabitId) ?? null;
 
     // Show loading while date initializes
     if (!currentDate) {
@@ -500,7 +500,7 @@ export default function HabitTracker() {
                                 <p className="text-xs text-purple-700 mt-1">Habits Tracked</p>
                             </div>
                             <div className="text-center p-3 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl">
-                                <p className="text-2xl sm:text-3xl font-bold text-amber-600">{maximRatings.length}</p>
+                                <p className="text-2xl sm:text-3xl font-bold text-amber-600">{maximRatings?.length ?? 0}</p>
                                 <p className="text-xs text-amber-700 mt-1">Quotes Liked</p>
                             </div>
                         </div>
@@ -512,7 +512,7 @@ export default function HabitTracker() {
                     <div className="flex items-center justify-center py-20">
                         <div className="w-12 h-12 border-4 border-porcelain border-t-royal rounded-full animate-spin" />
                     </div>
-                ) : habits.length === 0 ? (
+                ) : (habits && habits.length === 0) ? (
                     <div className="text-center py-16 md:py-24 px-6">
                         <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-dawn to-sky flex items-center justify-center">
                             <svg className="w-12 h-12 text-royal" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -540,7 +540,7 @@ export default function HabitTracker() {
                                 <div className="h-14 sm:h-16 px-3 sm:px-4 flex items-center bg-gradient-to-b from-porcelain/50 to-white border-b border-porcelain/30">
                                     <span className="text-xs font-bold text-china uppercase tracking-wider">Habit</span>
                                 </div>
-                                {habits.map((habit) => {
+                                {(habits || []).map((habit) => {
                                     const stats = calculateStats(habit._id);
                                     return (
                                         <div
@@ -593,7 +593,7 @@ export default function HabitTracker() {
                                         })}
                                     </div>
 
-                                    {habits.map((habit) => (
+                                    {(habits || []).map((habit) => (
                                         <div key={habit._id} className="flex h-14 sm:h-16 border-b border-porcelain/30 hover:bg-dawn/20 transition-colors">
                                             {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
                                                 const completed = isCompleted(habit._id, day);
@@ -644,7 +644,7 @@ export default function HabitTracker() {
                     <div className="p-4 sm:p-6">
                         {/* Habit Selector */}
                         <div className="flex flex-wrap gap-2 mb-6">
-                            {habits.map((habit) => (
+                            {(habits || []).map((habit) => (
                                 <button
                                     key={habit._id}
                                     className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${selectedHabitId === habit._id
