@@ -13,7 +13,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../convex/_generated/api.js';
-import * as dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { readFileSync } from 'fs';
